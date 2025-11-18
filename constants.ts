@@ -1,5 +1,5 @@
 
-import { LevelConfig } from './types';
+import { LevelConfig, LevelType } from './types';
 
 const JUNIOR_MODULES = [
   {
@@ -93,7 +93,8 @@ const MIDDLE_MODULES = [
 6. Kubelet (на ноде) -> Видит Pod назначен себе -> CRI (Containerd) -> Запуск контейнера
 7. Kubelet -> Обновляет статус в API Server -> Etcd
             </div>
-            <p>Никто не отдает прямых приказов. Все компоненты работают через наблюдение (Watch) за изменениями в Etcd.</p>`,
+            <p>Никто не отдает прямых приказов. Все компоненты работают через наблюдение (Watch) за изменениями в Etcd.</p>
+            <p class="mt-2 text-sm bg-blue-50 p-2 rounded border border-blue-100"><strong>GitOps Context:</strong> В продакшене <code>kubectl apply</code> редко выполняется вручную. Обычно это делает CD-оператор (ArgoCD, Flux), который автоматически синхронизирует состояние Git-репозитория с кластером. <code>kubectl apply</code> здесь — это "последняя миля" автоматизированного пайплайна.</p>`,
         tip: "Ключевое слово — 'Reconciliation Loop' (Петля согласования)."
       },
       {
@@ -126,7 +127,8 @@ Kubelet -> Dockershim (hack) -> Docker Daemon -> containerd -> runc -> Container
 Сейчас (CRI):
 Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
             </div>
-            <p class="mt-2">Удаление Docker (dockershim) убрало лишнюю прослойку. <code>containerd</code> (который был внутри Docker) теперь используется напрямую. Это стабильнее и меньше потребляет ресурсов.</p>`,
+            <p class="mt-2">Удаление Docker (dockershim) убрало лишнюю прослойку. <code>containerd</code> (который был внутри Docker) теперь используется напрямую. Это стабильнее и меньше потребляет ресурсов.</p>
+            <p class="mt-2"><strong>Альтернатива: CRI-O.</strong> Это другая популярная реализация CRI (от Red Hat). В отличие от containerd, который является универсальным, CRI-O создан специально и <em>только</em> для Kubernetes. Он еще легче и строго следует стандартам OCI. Для K8s нет разницы, что использовать — оба работают через CRI.</p>`,
         tip: "Не говорите 'Docker плохой'. Скажите 'Docker — это инструмент для разработки, а containerd — это рантайм для продакшена'."
       },
       {
@@ -167,6 +169,29 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
             <p><strong>Flat (BGP/Calico):</strong> Без инкапсуляции. Поды имеют реальные маршрутизируемые IP, доступные из сети организации. Ноды анонсируют маршруты физическим роутерам по BGP. Быстрее, проще отлаживать, но требует настройки физической сети.</p>`
       },
       {
+        q: "externalTrafficPolicy: Cluster vs Local. В чем разница?",
+        a: `<p>Этот параметр определяет, как трафик с NodePort/LoadBalancer доходит до пода.</p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Cluster (Default):</strong> Трафик приходит на любую ноду. Если пода там нет, нода пересылает (SNAT) пакет на другую ноду, где есть под.
+                    <br><em>Плюс:</em> Равномерное распределение нагрузки.
+                    <br><em>Минус:</em> Потеря реального Client IP (под видит IP ноды) и лишний сетевой хоп.</li>
+                <li><strong>Local:</strong> Трафик принимается только той нодой, где реально запущен под. Если пода нет — пакет дропается (через Health Check балансировщика).
+                    <br><em>Плюс:</em> Сохраняется Client IP (нет SNAT) и меньше задержка.
+                    <br><em>Минус:</em> Неравномерная нагрузка (если на одной ноде 1 под, а на другой 5 — первая получит меньше трафика, либо трафик пойдет только на "живые" ноды).</li>
+            </ul>`
+      },
+      {
+        q: "X-Forwarded-For header: что это и как связано с externalTrafficPolicy?",
+        a: `<p><strong>X-Forwarded-For (XFF)</strong> — это HTTP-заголовок, в который прокси/балансировщики записывают реальный IP клиента.</p>
+            <p><strong>Связь с externalTrafficPolicy:</strong></p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li>Если <code>externalTrafficPolicy: Cluster</code>: K8s делает SNAT, скрывая IP клиента на уровне TCP. Приложение видит внутренний IP. Чтобы узнать, кто пришел, приложение <em>обязано</em> читать заголовок <code>X-Forwarded-For</code> (если его добавил Ingress/LB).</li>
+                <li>Если <code>externalTrafficPolicy: Local</code>: K8s не делает SNAT. Приложение видит реальный IP клиента прямо в TCP-сокете. <code>X-Forwarded-For</code> становится менее критичным для определения IP (но все еще полезен, если есть цепочка прокси).</li>
+            </ul>
+            <p class="mt-2 text-sm bg-yellow-50 p-2 rounded border border-yellow-100"><strong>Security & Spoofing:</strong> Никогда не доверяйте XFF бездумно. Злоумышленник может отправить <code>curl -H "X-Forwarded-For: 127.0.0.1"</code>. Доверять можно только если ваш внешний периметр (Ingress/WAF) принудительно стирает входящий XFF и пишет свой верный заголовок.</p>`,
+        tip: "X-Forwarded-For - это Layer 7. externalTrafficPolicy - это Layer 4."
+      },
+      {
         q: "Зачем нужен hostNetwork: true?",
         a: `<p>Под с <code>hostNetwork: true</code> использует сетевой стек хоста (ноды), а не свой изолированный Namespace.</p>
             <ul class="list-disc pl-5 mt-2 space-y-1">
@@ -175,6 +200,16 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
                 <li><strong>Зачем:</strong> Нужно для системных компонентов (CNI плагины, kube-proxy, Ingress Controller для производительности), чтобы видеть реальный сетевой трафик.</li>
                 <li><strong>Риск:</strong> Конфликт портов (нельзя запустить 2 таких пода на одной ноде) и безопасность (доступ к loopback хоста).</li>
             </ul>`,
+      },
+      {
+        q: "What are Kubernetes Network Policies and how do they differ from firewall rules?",
+        a: `<p><strong>Network Policies (NetPol)</strong> — это нативный механизм K8s для сегментации трафика между подами.</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Не IP, а Метки:</strong> Традиционные Firewall работают с IP-адресами/подсетями. NetPol использует <strong>Labels (Selectors)</strong>. Поскольку IP подов постоянно меняются, правила на основе меток (например, <code>app: db</code> разрешено только для <code>app: backend</code>) гораздо надежнее.</li>
+                <li><strong>Default Allow:</strong> По умолчанию в K8s любой под может говорить с любым. Создание NetPol меняет режим на "все запрещено, кроме разрешенного".</li>
+                <li><strong>Реализация через CNI:</strong> Сами по себе правила NetPol ничего не делают. Их исполняет CNI плагин (Calico, Cilium). Если ваш CNI (например, простой Flannel) не поддерживает политики, они будут игнорироваться.</li>
+            </ul>`,
+        tip: "Это критический компонент безопасности (Zero Trust) внутри кластера."
       }
     ]
   },
@@ -297,124 +332,43 @@ const SENIOR_MODULES = [
             <p>Логика контроллера (Reconcile loop) читает данные из локального кэша (мгновенно), а не из API. Это снижает нагрузку на порядки.</p>`
       },
       {
-        q: "Как работает Leader Election для компонентов Control Plane?",
-        a: `<p>Kubernetes использует механизм <strong>Resource Locking</strong> (обычно на базе объекта <code>Lease</code> в API).</p>
-            <p>Все реплики (например, Controller Manager) пытаются обновить один и тот же Lease объект, записывая туда свое имя и время.
-            <br>Благодаря гарантиям атомарности Etcd, только один запрос проходит успешно. Этот инстанс становится Лидером. Остальные переходят в режим ожидания и периодически проверяют, обновляет ли лидер свой Lease.</p>`
-      },
-      {
-        q: "Как работает API Priority and Fairness (APF)?",
-        a: `<p>Это механизм защиты Control Plane от перегрузки (DDoS от собственных сломанных контроллеров).</p>
-            <p>Запросы классифицируются по <code>FlowSchema</code> (кто пришел? системный юзер, лидер, обычный под?) и направляются в <code>PriorityLevelConfiguration</code>.</p>
-            <p>У каждого уровня приоритета есть очереди. Если очередь переполнена, запросы отклоняются с 429 Too Many Requests. Это предотвращает ситуацию, когда один сломанный оператор "забивает" API сервер и не дает Kubelet'ам обновлять статусы нод.</p>`,
+        q: "Как работает Leader Election в Control Plane компонентах?",
+        a: `<p>В HA кластере запущено 3 реплики Controller Manager и Scheduler, но работать должна <strong>только одна</strong> (чтобы не дублировать действия).</p>
+            <p>Механизм:</p>
+            <ol class="list-decimal pl-5 mt-2 space-y-1">
+                <li>Используется объект <code>Lease</code> (или Endpoint) в неймспейсе <code>kube-system</code>.</li>
+                <li>Все реплики пытаются обновить этот объект, записывая туда свое имя и timestamp.</li>
+                <li>Кто успел записать — тот Лидер. Он обновляет timestamp каждые N секунд.</li>
+                <li>Остальные (Standby) следят за Lease. Если timestamp не обновлялся долго — они пытаются захватить лидерство.</li>
+            </ol>`
       }
     ]
   },
   {
-    id: 's2', title: '2. Ядро Linux и Ресурсы', desc: 'Cgroups, OOM',
+    id: 's2', title: '2. Безопасность (Security)', desc: 'PSA, RBAC, mTLS',
     questions: [
       {
-        q: "Как CPU Requests и Limits реализованы в ядре Linux?",
-        a: `<p>Kubernetes транслирует спецификацию пода в настройки <strong>Cgroups</strong>.</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Requests -> cpu.shares:</strong> Это "мягкий" вес. Работает <em>только</em> при конкуренции за процессор. Если нода свободна, под с малым реквестом может занять хоть 100% CPU.</li>
-                <li><strong>Limits -> cpu.cfs_quota_us:</strong> Это "жесткий" лимит времени планировщика (CFS). Если процесс исчерпал свою квоту (например, 100мс процессорного времени), ядро <strong>принудительно убирает</strong> его с CPU (Throttling) до следующего периода. Это вызывает задержки (latency), даже если CPU на ноде простаивает.</li>
+        q: "Explain the concept and functionality of Pod Security Admission (PSA) and how it replaces PodSecurityPolicy (PSP).",
+        a: `<p><strong>Pod Security Admission (PSA)</strong> — это встроенный Admission Controller, который реализует стандарты <strong>Pod Security Standards (PSS)</strong>.</p>
+            <p>Он пришел на замену <strong>PodSecurityPolicy (PSP)</strong>, который был удален в v1.25 из-за сложности и архитектурных проблем.</p>
+            
+            <h4 class="font-bold mt-2">Как работает PSA:</h4>
+            <p>PSA управляется через <strong>Labels на Namespace</strong>. Никаких CRD. Вы просто вешаете лейбл на неймспейс, и контроллер применяет правила ко всем подам в нем.</p>
+            
+            <h4 class="font-bold mt-2">Уровни (Profiles):</h4>
+            <ul class="list-disc pl-5 space-y-1">
+                <li><strong>Privileged:</strong> Разрешено всё (как <code>docker run --privileged</code>). Для системных компонентов.</li>
+                <li><strong>Baseline:</strong> Минимум ограничений для обычных приложений. Запрещает явные уязвимости (hostNetwork, hostPath), но разрешает большинство конфигов.</li>
+                <li><strong>Restricted:</strong> Максимальная защита (Best Practices). Требует <code>runAsNonRoot</code>, сброс Capabilities и т.д.</li>
+            </ul>
+            
+            <h4 class="font-bold mt-2">Режимы работы (Modes):</h4>
+            <ul class="list-disc pl-5 space-y-1">
+                <li><strong>enforce:</strong> Блокирует создание пода, если он нарушает политику.</li>
+                <li><strong>audit:</strong> Записывает нарушение в Audit Log.</li>
+                <li><strong>warn:</strong> Выводит предупреждение пользователю при <code>kubectl apply</code>.</li>
             </ul>`,
-        tip: "Для latency-sensitive приложений часто рекомендуют не ставить CPU Limits, чтобы избежать троттлинга."
-      },
-      {
-        q: "Как OOM Killer выбирает жертву? (OOM Score)",
-        a: `<p>Когда память кончается, ядро Linux убивает процессы. Выбор жертвы зависит от <code>oom_score</code>.</p>
-            <p>Kubelet манипулирует этим счетом через <code>oom_score_adj</code> в зависимости от QoS класса пода:</p>
-            <ul>
-                <li><strong>Guaranteed (Req == Lim):</strong> -998. (Почти бессмертны, убиваются последними).</li>
-                <li><strong>BestEffort (No limits):</strong> +1000. (Первые кандидаты на вылет).</li>
-                <li><strong>Burstable:</strong> Значение рассчитывается динамически.</li>
-            </ul>`
-      },
-      {
-        q: "Что такое 'Static' CPU Manager Policy в Kubelet?",
-        a: `<p>По умолчанию Kubelet использует CFS Quota, и потоки приложения прыгают по всем ядрам CPU (Context switching). Это снижает производительность для High Performance задач.</p>
-            <p>Политика <strong>Static</strong> позволяет выделить поду (класса Guaranteed с целым числом CPU) <strong>эксклюзивные физические ядра</strong>. Kubelet меняет cpuset cgroup, изолируя ядра только для этого пода. Никто другой (даже системные процессы) не смогут их использовать.</p>`,
-      }
-    ]
-  },
-  {
-    id: 's3', title: '3. Безопасность и CNI Advanced', desc: 'Exec, CNI Chains',
-    questions: [
-      {
-        q: "Как технически работает `kubectl exec`? Опиши поток.",
-        a: `<p>Это не SSH. Это цепочка соединений с Upgrade протокола.</p>
-            <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
-Client (kubectl) -> API Server (HTTP POST /exec -> Upgrade: SPDY/HTTP2)
-API Server (Proxy) -> Kubelet (на ноде)
-Kubelet -> CRI (Container Runtime) (gRPC Exec)
-CRI -> Container Namespace (Stream stdin/stdout)
-            </div>
-            <p>API Server выступает в роли прокси. Данные передаются через стримы WebSocket или SPDY. Поэтому стабильность exec зависит от доступности API сервера.</p>`
-      },
-      {
-        q: "Что такое CNI Chaining?",
-        a: `<p>Спецификация CNI позволяет запускать несколько плагинов последовательно для одного сетевого интерфейса.</p>
-            <p>Пример популярной цепочки:
-            <br>1. <strong>Base CNI (Calico/AWS VPC):</strong> Создает интерфейс, назначает IP, настраивает роутинг.
-            <br>2. <strong>Portmap:</strong> Настраивает iptables правила для реализации <code>hostPort</code>.
-            <br>3. <strong>Istio CNI:</strong> Настраивает iptables внутри неймспейса пода для прозрачного перехвата трафика в Envoy sidecar.</p>`
-      },
-      {
-        q: "Проблема ndots:5 и DNS",
-        a: `<p>По умолчанию в <code>/etc/resolv.conf</code> пода стоит <code>ndots:5</code>. Это заставляет резолвер считать любой домен с < 5 точками "неполным" и перебирать суффиксы (search domains: <code>svc.cluster.local</code>, <code>namespace...</code>).</p>
-            <p><strong>Проблема:</strong> Если вы резолвите <code>google.com</code> (1 точка), K8s сначала попробует:
-            1. <code>google.com.namespace.svc.cluster.local</code> (NXDOMAIN)
-            2. <code>google.com.svc.cluster.local</code> (NXDOMAIN)
-            ...и так далее.</p>
-            <p>Это утраивает нагрузку на DNS сервер. Решение: использовать FQDN (с точкой в конце: <code>google.com.</code>) или менять <code>dnsConfig</code> в поде.</p>`
-      },
-        {
-            q: "externalTrafficPolicy: Cluster vs Local",
-            a: `<p>Это касается сервисов типа NodePort/LoadBalancer.</p>
-                <ul class="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Cluster (Default):</strong> Трафик приходит на любую ноду, и если там нет нужного пода, пересылается (SNAT) на другую ноду.
-                        <br><em>Плюс:</em> Равномерная балансировка. <em>Минус:</em> Потеря исходного Client IP (из-за SNAT) и лишний сетевой хоп.</li>
-                    <li><strong>Local:</strong> Трафик принимается только если на <strong>этой</strong> ноде есть нужный под. Если пода нет — пакет дропается.
-                        <br><em>Плюс:</em> Сохраняется Client IP, нет лишних хопов. <em>Минус:</em> Неравномерная нагрузка (если на ноде нет подов, она выпадает из балансировки).</li>
-                </ul>`,
-            tip: "Всегда упоминайте Client IP Source Preservation как главную причину использования Local."
-        },
-        {
-        q: "Компоненты CSI драйвера",
-        a: `<p>CSI драйвер обычно состоит из пода на каждой ноде (Node Driver) и центрального контроллера (Controller Driver).</p>
-            <p>Чтобы не писать логику общения с K8s API внутри самого драйвера (который должен быть универсальным), K8s предоставляет готовые <strong>Sidecar контейнеры</strong>:</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>external-provisioner:</strong> Следит за PVC, вызывает у драйвера <code>CreateVolume</code>.</li>
-                <li><strong>external-attacher:</strong> Следит за VolumeAttachment, вызывает <code>ControllerPublishVolume</code> (подключение диска к ноде в облаке).</li>
-                <li><strong>node-driver-registrar:</strong> Регистрирует драйвер в Kubelet.</li>
-            </ul>`,
-        tip: "Разделите Control Plane операции (создание диска в AWS) и Node операции (mount /dev/xvdba)."
-      },
-      {
-        q: "Volume Expansion Flow",
-        a: `<p>Процесс двухэтапный:</p>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li><strong>Control Plane Expansion:</strong> <code>external-resizer</code> вызывает API облака, чтобы увеличить размер блочного устройства.</li>
-                <li><strong>File System Expansion:</strong> Kubelet на ноде обнаруживает изменение размера устройства и вызывает <code>NodeExpandVolume</code>. Драйвер выполняет <code>resize2fs</code> или <code>xfs_growfs</code> прямо на работающем поде (online resize).</li>
-            </ol>`
-      },
-      {
-        q: "OIDC Authentication",
-        a: `<p>API Server <strong>не хранит</strong> пользователей. Он доверяет токенам (JWT ID Token), подписанным внешним провайдером.</p>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li>Пользователь логинится в Keycloak, получает <code>id_token</code>.</li>
-                <li><code>kubectl</code> отправляет этот токен в заголовке <code>Authorization: Bearer ...</code>.</li>
-                <li>API Server проверяет цифровую подпись токена (используя публичный ключ провайдера, указанный во флагах <code>--oidc-issuer-url</code>).</li>
-                <li>Если подпись верна, он извлекает поля <code>email</code>/<code>groups</code> из токена и использует их для RBAC.</li>
-            </ol>`
-      },
-      {
-        q: "CSR API и Kubelet Bootstrapping",
-        a: `<p>Когда новая нода добавляется в кластер, у неё нет сертификатов. Она не может просто сгенерировать их сама.</p>
-            <p>Kubelet использует начальный токен (bootstrap token), чтобы отправить запрос <strong>CSR</strong> в API Server: "Пожалуйста, подпишите мне сертификат для Node Authorizer".</p>
-            <p>Контроллер <code>csrapproving</code> (часть Controller Manager) проверяет токен и автоматически одобряет (Approve) запрос, выдавая Kubelet'у полноценный клиентский сертификат.</p>`
+        tip: "PSA — это 'Batteries included' решение. Для более сложной логики (например, разрешить image только из определенного registry) нужно использовать OPA Gatekeeper или Kyverno."
       }
     ]
   }

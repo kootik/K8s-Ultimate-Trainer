@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { LevelType, LevelConfig } from './types';
 import { LEVELS } from './constants';
@@ -31,12 +30,13 @@ const App: React.FC = () => {
   // Search Logic Helpers
   const isSearchActive = searchQuery.trim().length > 0;
   
-  const filterQuestion = (q: any, query: string) => {
+  const filterQuestion = (q: any, query: string, context: string = '') => {
     const lowerQuery = query.toLowerCase();
     return (
       q.q.toLowerCase().includes(lowerQuery) ||
       q.a.toLowerCase().includes(lowerQuery) ||
-      (q.tip && q.tip.toLowerCase().includes(lowerQuery))
+      (q.tip && q.tip.toLowerCase().includes(lowerQuery)) ||
+      context.toLowerCase().includes(lowerQuery)
     );
   };
 
@@ -108,7 +108,7 @@ const App: React.FC = () => {
       const results: Array<{ data: any, id: string, originalIndex: number, moduleTitle: string }> = [];
       levelData.modules.forEach(mod => {
         mod.questions.forEach((q, idx) => {
-          if (filterQuestion(q, searchQuery)) {
+          if (filterQuestion(q, searchQuery, mod.desc)) {
             results.push({ 
               data: q, 
               id: `${currentLevel}-${mod.id}-${idx}`, 
