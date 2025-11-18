@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { LevelType, LevelConfig } from './types';
 import { LEVELS } from './constants';
@@ -9,6 +10,8 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [readQuestions, setReadQuestions] = useState<Set<string>>(new Set());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
     try {
@@ -19,10 +22,26 @@ const App: React.FC = () => {
     }
   });
 
+  // Favorites/Difficult State
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const saved = localStorage.getItem('k8s-trainer-favorites');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch (e) {
+      return new Set();
+    }
+  });
+
   // Persist bookmarks
   useEffect(() => {
     localStorage.setItem('k8s-trainer-bookmarks', JSON.stringify(Array.from(bookmarks)));
   }, [bookmarks]);
+
+  // Persist favorites
+  useEffect(() => {
+    localStorage.setItem('k8s-trainer-favorites', JSON.stringify(Array.from(favorites)));
+  }, [favorites]);
 
   // Derived state for active data
   const levelData = currentLevel ? LEVELS[currentLevel] : null;
@@ -40,10 +59,11 @@ const App: React.FC = () => {
     );
   };
 
-  // Logic for Bookmarks View
+  // Logic for Views
   const isBookmarksView = currentModuleId === 'bookmarks' && !isSearchActive;
+  const isFavoritesView = currentModuleId === 'favorites' && !isSearchActive;
   
-  const activeModule = !isBookmarksView && !isSearchActive && levelData 
+  const activeModule = !isBookmarksView && !isFavoritesView && !isSearchActive && levelData 
     ? levelData.modules.find(m => m.id === currentModuleId) 
     : null;
 
@@ -60,6 +80,12 @@ const App: React.FC = () => {
     if (!currentLevel) return 0;
     return Array.from(bookmarks).filter((id: string) => id.startsWith(`${currentLevel}-`)).length;
   }, [bookmarks, currentLevel]);
+
+  // Calculate favorites count for current level
+  const levelFavoritesCount = useMemo(() => {
+    if (!currentLevel) return 0;
+    return Array.from(favorites).filter((id: string) => id.startsWith(`${currentLevel}-`)).length;
+  }, [favorites, currentLevel]);
 
   const handleLevelSelect = (level: LevelType) => {
     setCurrentLevel(level);
@@ -88,6 +114,15 @@ const App: React.FC = () => {
     });
   };
 
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const handleModuleSelect = (id: string) => {
     setCurrentModuleId(id);
     setSearchQuery(''); // Clear search when explicitly selecting a module
@@ -96,6 +131,11 @@ const App: React.FC = () => {
 
   const handleBookmarksSelect = () => {
     setCurrentModuleId('bookmarks');
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleFavoritesSelect = () => {
+    setCurrentModuleId('favorites');
     setIsMobileMenuOpen(false);
   };
 
@@ -121,7 +161,21 @@ const App: React.FC = () => {
       return results;
     }
 
-    // 2. Bookmarks View
+    // 2. Favorites View (Marked as Difficult)
+    if (isFavoritesView) {
+      const favs: Array<{ data: any, id: string, originalIndex: number }> = [];
+      levelData.modules.forEach(mod => {
+        mod.questions.forEach((q, idx) => {
+          const id = `${currentLevel}-${mod.id}-${idx}`;
+          if (favorites.has(id)) {
+            favs.push({ data: q, id, originalIndex: idx });
+          }
+        });
+      });
+      return favs;
+    }
+
+    // 3. Bookmarks View
     if (isBookmarksView) {
       const bookmarked: Array<{ data: any, id: string, originalIndex: number }> = [];
       levelData.modules.forEach(mod => {
@@ -135,7 +189,7 @@ const App: React.FC = () => {
       return bookmarked;
     }
 
-    // 3. Specific Module View
+    // 4. Specific Module View
     if (activeModule) {
       return activeModule.questions.map((q, idx) => ({
         data: q,
@@ -145,7 +199,7 @@ const App: React.FC = () => {
     }
 
     return [];
-  }, [levelData, isBookmarksView, activeModule, bookmarks, currentLevel, searchQuery, isSearchActive]);
+  }, [levelData, isBookmarksView, isFavoritesView, activeModule, bookmarks, favorites, currentLevel, searchQuery, isSearchActive]);
 
   // Filter Modules for Sidebar based on Search
   const sidebarModules = useMemo(() => {
@@ -257,9 +311,28 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-1">
-          {/* Bookmarks Navigation Item - Only show if not searching */}
+          {/* Bookmarks & Favorites Navigation Items - Only show if not searching */}
           {!isSearchActive && (
             <>
+              {/* Favorites / Important */}
+              <button
+                onClick={handleFavoritesSelect}
+                className={`w-full text-left px-4 py-3 rounded-lg mb-1 text-sm font-bold transition-all flex items-center gap-2 group
+                  ${currentModuleId === 'favorites' 
+                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
+                  }`}
+              >
+                 <svg className="w-4 h-4 text-rose-500 fill-current" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                <span className="flex-grow">Marked Difficult</span>
+                {levelFavoritesCount > 0 && (
+                    <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-extrabold shadow-sm">
+                      {levelFavoritesCount}
+                    </span>
+                )}
+              </button>
+
+              {/* Bookmarks */}
               <button
                 onClick={handleBookmarksSelect}
                 className={`w-full text-left px-4 py-3 rounded-lg mb-4 text-sm font-bold transition-all flex items-center gap-2 group
@@ -328,16 +401,20 @@ const App: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-800 truncate">
               {isSearchActive
                 ? "🔍 Search Results"
-                : isBookmarksView 
-                  ? "⭐ Saved Questions" 
-                  : (activeModule ? activeModule.title : "Select a Module")}
+                : isFavoritesView
+                  ? "❤️ Difficult / Important"
+                  : isBookmarksView 
+                    ? "⭐ Saved Questions" 
+                    : (activeModule ? activeModule.title : "Select a Module")}
             </h2>
             <p className="text-sm text-slate-500 mt-0.5 hidden md:block truncate">
                {isSearchActive
                 ? `Found ${questionsToDisplay.length} matches for "${searchQuery}"`
-                : isBookmarksView 
-                  ? "Your personal collection of bookmarked topics" 
-                  : (activeModule ? activeModule.desc : "Choose a topic from the sidebar")}
+                : isFavoritesView
+                  ? "Questions you marked as difficult or critical for review"
+                  : isBookmarksView 
+                    ? "Your personal collection of bookmarked topics" 
+                    : (activeModule ? activeModule.desc : "Choose a topic from the sidebar")}
             </p>
           </div>
         </header>
@@ -358,8 +435,10 @@ const App: React.FC = () => {
                     data={item.data}
                     isRead={readQuestions.has(item.id)}
                     isBookmarked={bookmarks.has(item.id)}
+                    isFavorite={favorites.has(item.id)}
                     onReveal={() => handleMarkRead(item.id)}
                     onToggleBookmark={() => toggleBookmark(item.id)}
+                    onToggleFavorite={() => toggleFavorite(item.id)}
                     levelColor={levelData?.color || 'blue-600'}
                   />
                 </div>
@@ -372,9 +451,14 @@ const App: React.FC = () => {
                   <div className="text-6xl mb-4">🔍</div>
                   <p className="text-lg font-medium text-center">No matches found for "{searchQuery}".<br/>Try a different keyword.</p>
                 </>
+              ) : isFavoritesView ? (
+                <>
+                   <div className="text-6xl mb-4 opacity-50 text-rose-400">❤️</div>
+                   <p className="text-lg font-medium text-center">No difficult questions marked.<br/>Click the heart icon to track complex topics.</p>
+                </>
               ) : isBookmarksView ? (
                 <>
-                  <div className="text-6xl mb-4 opacity-50">⭐</div>
+                  <div className="text-6xl mb-4 opacity-50 text-yellow-400">⭐</div>
                   <p className="text-lg font-medium text-center">No saved questions yet.<br/>Click the star icon on any question to save it.</p>
                 </>
               ) : (

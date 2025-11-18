@@ -8,8 +8,10 @@ interface QuestionCardProps {
   index: number;
   isRead: boolean;
   isBookmarked: boolean;
+  isFavorite: boolean;
   onReveal: () => void;
   onToggleBookmark: () => void;
+  onToggleFavorite: () => void;
   levelColor: string;
 }
 
@@ -18,8 +20,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   index, 
   isRead, 
   isBookmarked,
+  isFavorite,
   onReveal, 
   onToggleBookmark,
+  onToggleFavorite,
   levelColor 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,7 +45,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     // Create a temporary element to extract text from HTML
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = data.a;
-    const textToCopy = tempDiv.innerText || tempDiv.textContent || "";
+    const answerText = tempDiv.innerText || tempDiv.textContent || "";
+    
+    const textToCopy = `Question: ${data.q}\n\nAnswer:\n${answerText}`;
     
     navigator.clipboard.writeText(textToCopy);
     setIsAnswerCopied(true);
@@ -52,7 +58,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     <article className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden transition-all hover:shadow-md group mb-6 relative">
       {/* Header / Question */}
       <div 
-        className="p-6 cursor-pointer select-none flex justify-between items-start gap-4 pr-12" 
+        className="p-6 cursor-pointer select-none flex justify-between items-start gap-4 pr-32" 
         onClick={toggleOpen}
       >
         <div>
@@ -71,20 +77,38 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         </div>
       </div>
 
-      {/* Bookmark Button - Absolute positioned to not interfere with flex layout heavily */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggleBookmark(); }}
-        className={`absolute top-6 right-12 p-1.5 rounded-full transition-all duration-200 transform hover:scale-110 z-10
-          ${isBookmarked 
-            ? 'text-yellow-400 hover:text-yellow-500 bg-yellow-50' 
-            : 'text-slate-300 hover:text-yellow-400 hover:bg-slate-50'
-          }`}
-        title={isBookmarked ? "Remove from saved" : "Save for later"}
-      >
-         <svg className={`w-6 h-6 ${isBookmarked ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-         </svg>
-      </button>
+      {/* Action Buttons */}
+      <div className="absolute top-6 right-12 flex items-center gap-2">
+        {/* Favorite / Difficult Button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+          className={`p-1.5 rounded-full transition-all duration-200 transform hover:scale-110 z-10
+            ${isFavorite 
+              ? 'text-rose-500 hover:text-rose-600 bg-rose-50' 
+              : 'text-slate-300 hover:text-rose-500 hover:bg-slate-50'
+            }`}
+          title={isFavorite ? "Remove from important" : "Mark as Difficult / Important"}
+        >
+           <svg className={`w-6 h-6 ${isFavorite ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+           </svg>
+        </button>
+
+        {/* Bookmark Button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleBookmark(); }}
+          className={`p-1.5 rounded-full transition-all duration-200 transform hover:scale-110 z-10
+            ${isBookmarked 
+              ? 'text-yellow-400 hover:text-yellow-500 bg-yellow-50' 
+              : 'text-slate-300 hover:text-yellow-400 hover:bg-slate-50'
+            }`}
+          title={isBookmarked ? "Remove from saved" : "Save for later"}
+        >
+           <svg className={`w-6 h-6 ${isBookmarked ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+           </svg>
+        </button>
+      </div>
 
       {/* Content Area */}
       <div 
@@ -121,7 +145,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                       ? 'bg-green-50 text-green-600 border-green-200 shadow-sm' 
                       : 'bg-white/80 hover:bg-white text-slate-400 border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:shadow-sm'
                   }`}
-                  title="Copy answer text"
+                  title="Copy Question & Answer"
                 >
                   <div className="relative w-4 h-4 flex items-center justify-center">
                      {/* Checkmark Icon (Scale In) */}
@@ -141,7 +165,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     </svg>
                   </div>
                   <span className={`transition-colors duration-200 ${isAnswerCopied ? 'text-green-600' : ''}`}>
-                    {isAnswerCopied ? 'Copied!' : 'Copy'}
+                    {isAnswerCopied ? 'Copied!' : 'Copy Q&A'}
                   </span>
                 </button>
               </div>
