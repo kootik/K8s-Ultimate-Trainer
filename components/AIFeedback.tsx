@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { generateAIResponse } from '../services/geminiService';
 import { AIPersona } from '../types';
@@ -12,6 +13,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [activePersona, setActivePersona] = useState<AIPersona | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleAction = async (persona: AIPersona) => {
     if (persona.startsWith('interviewer') && !input.trim()) {
@@ -26,6 +28,13 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
     const response = await generateAIResponse(persona, question, answer, input);
     setFeedback(response);
     setLoading(false);
+  };
+
+  const handleCopy = () => {
+    if (!feedback) return;
+    navigator.clipboard.writeText(feedback);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   // Markdown rendering helper (simple regex for basic formatting to avoid heavy deps if possible, but safe logic)
@@ -106,15 +115,30 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
       )}
 
       {feedback && (
-        <div className="mt-4 p-5 bg-white border border-indigo-100 rounded-lg shadow-sm relative overflow-hidden animate-fade-in">
+        <div className="mt-4 p-5 bg-white border border-indigo-100 rounded-lg shadow-sm relative overflow-hidden animate-fade-in group">
           <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-          <div className="text-xs font-bold text-indigo-500 mb-2 uppercase tracking-wider">
-            {activePersona === 'interviewer_strict' && 'Вердикт интервьюера'}
-            {activePersona === 'interviewer_friendly' && 'Совет ментора'}
-            {activePersona === 'teacher_eli5' && 'Простое объяснение'}
-            {activePersona === 'architect_deep' && 'Архитектурный разбор'}
-            {activePersona === 'devil_advocate' && 'Follow-up Challenge'}
+          
+          <div className="flex justify-between items-start mb-2">
+            <div className="text-xs font-bold text-indigo-500 uppercase tracking-wider">
+              {activePersona === 'interviewer_strict' && 'Вердикт интервьюера'}
+              {activePersona === 'interviewer_friendly' && 'Совет ментора'}
+              {activePersona === 'teacher_eli5' && 'Простое объяснение'}
+              {activePersona === 'architect_deep' && 'Архитектурный разбор'}
+              {activePersona === 'devil_advocate' && 'Follow-up Challenge'}
+            </div>
+            <button 
+              onClick={handleCopy}
+              className="text-slate-400 hover:text-indigo-600 transition-colors p-1"
+              title="Copy feedback"
+            >
+              {isCopied ? (
+                 <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+              ) : (
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              )}
+            </button>
           </div>
+
           <div 
             className="prose prose-sm max-w-none text-slate-800 leading-relaxed whitespace-pre-wrap font-medium"
             dangerouslySetInnerHTML={renderMarkdown(feedback)} 
