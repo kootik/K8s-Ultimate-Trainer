@@ -1,15 +1,10 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
+Copyright (c) 2025 [ALEXANDER / KOOTIK]. All Rights Reserved.
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
+NOTICE TO USER:
+The source code, design, and content of this project ("K8s Ultimate Trainer") are the exclusive property of the author.
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+1. Non-Commercial Use: You are permitted to view, fork, and use this software for personal educational purposes only.
+2. Commercial Use Prohibited: Any use of this software, its source code, or its content for commercial purposes (including but not limited to: training courses, paid services, corporate integration, or marketing/lead generation) is STRICTLY PROHIBITED without a separate written license agreement from the author.
+3. No Distribution: You may not reproduce, distribute, or transmit any part of this software in any form or by any means for commercial advantage.
+
+For commercial licensing inquiries, please contact: [ progressive.cat.espy@mask.me /Telegram https://t.me/nektosien]

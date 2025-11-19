@@ -127,4 +127,8 @@ src/
 5.  Open a Pull Request.
 
 -----
+## 📄 License
+This project is proprietary software.
+**Commercial use is strictly prohibited without a license.**
+© 2025 [K.ALEXANDER]. All Rights Reserved.
 
