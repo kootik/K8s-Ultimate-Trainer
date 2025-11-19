@@ -36,6 +36,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
   const [isAnswerCopied, setIsAnswerCopied] = useState(false);
+  
+  // AI Assistant Visibility State (Hidden by default)
+  const [isAIActive, setIsAIActive] = useState(false);
 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
@@ -177,9 +180,48 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       <div 
         className={`transition-all duration-500 ease-in-out bg-slate-50/50 border-t border-slate-100 overflow-hidden ${isOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}
       >
-        {/* AI Feedback - Always Visible if Expanded */}
+        {/* AI Feedback Section */}
         <div className="px-4 sm:px-6 pt-6 pb-2">
-           <AIFeedback question={data.q} answer={data.a} />
+          {!isAIActive ? (
+            /* Hidden State - Activation Banner */
+            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all hover:border-violet-300 hover:bg-violet-50/30 group/ai-toggle">
+               <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm text-xl group-hover/ai-toggle:scale-110 transition-transform">
+                    🤖
+                  </div>
+                  <div className="text-left flex-1">
+                    <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        Умный помощник
+                        <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-normal uppercase tracking-wide">Скрыт</span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        Включите для <span className="font-semibold text-violet-600">симуляции интервью</span> или <span className="font-semibold text-violet-600">разбора кода</span>.
+                    </p>
+                  </div>
+               </div>
+               <button
+                 onClick={(e) => { e.stopPropagation(); setIsAIActive(true); }}
+                 className="w-full sm:w-auto whitespace-nowrap px-4 py-2.5 bg-white border border-slate-200 shadow-sm text-slate-700 text-xs font-bold rounded-lg hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+               >
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                 <span>Активировать AI</span>
+               </button>
+            </div>
+          ) : (
+            /* Active State - Full UI */
+            <div className="relative animate-fade-in">
+                <div className="absolute top-2 right-2 z-10">
+                    <button 
+                        onClick={() => setIsAIActive(false)}
+                        className="text-[10px] font-medium text-slate-400 hover:text-slate-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200/50 transition-colors"
+                        title="Скрыть помощника"
+                    >
+                        ✕ Скрыть
+                    </button>
+                </div>
+                <AIFeedback question={data.q} answer={data.a} />
+            </div>
+          )}
         </div>
 
         {/* Answer Container */}
