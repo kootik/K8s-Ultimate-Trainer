@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { LevelType, LevelConfig } from './types';
 import { LEVELS } from './constants';
@@ -220,7 +221,7 @@ const App: React.FC = () => {
       <div className="h-screen w-full bg-slate-50 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-16 pb-32">
           <div className="text-center mb-8 md:mb-16 animate-fade-in">
-            <h1 className="text-3xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-4 md:mb-6">
+            <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-4 md:mb-6">
               Kubernetes <span className="text-blue-600">Ultimate Hub</span>
             </h1>
             <p className="text-base md:text-xl text-slate-600 max-w-3xl mx-auto font-medium leading-relaxed">
@@ -228,12 +229,12 @@ const App: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
             {(Object.values(LEVELS) as LevelConfig[]).map((level, idx) => (
               <div 
                 key={level.id}
                 onClick={() => handleLevelSelect(level.id)}
-                className={`bg-white rounded-xl md:rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group flex flex-col animate-fade-in active:scale-95 md:active:scale-100`}
+                className={`bg-white rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100`}
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
                 <div className="flex items-center justify-between md:block mb-4 md:mb-6">
@@ -260,16 +261,14 @@ const App: React.FC = () => {
     <div className="flex h-screen overflow-hidden bg-slate-50 relative">
       
       {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-20 md:hidden transition-opacity duration-300"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      <div 
+        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-20 md:hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-30 w-80 bg-slate-900 text-white flex flex-col flex-shrink-0 shadow-2xl transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-30 w-72 md:w-80 bg-slate-900 text-white flex flex-col flex-shrink-0 shadow-2xl transition-transform duration-300 ease-in-out
         md:static md:translate-x-0 md:shadow-xl
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
@@ -277,6 +276,10 @@ const App: React.FC = () => {
           {/* Sidebar Header with Level Switcher */}
           <div className="flex items-center justify-between mb-4">
              <h1 className="text-xl font-bold text-white tracking-tight cursor-pointer" onClick={handleGoHome}>K8s Trainer</h1>
+             {/* Mobile Close Button */}
+             <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+             </button>
           </div>
           
           {/* Inline Level Switcher */}
@@ -313,7 +316,7 @@ const App: React.FC = () => {
             <input
               type="text"
               className="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-lg leading-5 bg-slate-800 text-slate-300 placeholder-slate-500 focus:outline-none focus:bg-slate-700 focus:border-slate-600 focus:text-white sm:text-sm transition-colors"
-              placeholder="Filter modules & questions..."
+              placeholder="Filter modules..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -326,16 +329,12 @@ const App: React.FC = () => {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                {/* Tooltip */}
-                <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] font-medium rounded shadow-lg opacity-0 group-hover/app:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  Clear search
-                </span>
               </button>
             )}
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-700">
           {/* Bookmarks & Favorites Navigation Items - Only show if not searching */}
           {!isSearchActive && (
             <>
@@ -413,49 +412,48 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 w-full">
         {/* Mobile Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-10 flex-shrink-0">
-          <div className="md:hidden mr-4 flex items-center gap-3">
+        <header className="bg-white border-b border-slate-200 px-4 py-4 md:px-6 flex items-center shadow-sm z-10 flex-shrink-0">
+          <div className="md:hidden mr-3 flex items-center">
              <button 
                onClick={() => setIsMobileMenuOpen(true)} 
-               className="group/app relative text-slate-700 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-slate-100"
+               className="text-slate-700 hover:text-blue-600 transition-colors p-2 rounded-md hover:bg-slate-100 -ml-2"
                aria-label="Open menu"
              >
                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-               {/* Tooltip */}
-               <span className="absolute top-full mt-2 left-0 px-2 py-1 bg-slate-800 text-white text-[10px] font-medium rounded shadow-lg opacity-0 group-hover/app:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                 Open menu
-               </span>
              </button>
-             <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
-                {levelData?.title}
-             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-slate-800 truncate">
-              {isSearchActive
-                ? "🔍 Search Results"
-                : isFavoritesView
-                  ? "❤️ Difficult / Important"
-                  : isBookmarksView 
-                    ? "⭐ Saved Questions" 
-                    : (activeModule ? activeModule.title : "Select a Module")}
-            </h2>
-            <p className="text-sm text-slate-500 mt-0.5 hidden md:block truncate">
+            <div className="flex items-center gap-2 mb-0.5">
+                <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate">
+                {isSearchActive
+                    ? "Search Results"
+                    : isFavoritesView
+                    ? "Difficult / Important"
+                    : isBookmarksView 
+                        ? "Saved Questions" 
+                        : (activeModule ? activeModule.title : "Select a Module")}
+                </h2>
+                 {/* Show Level Badge on Mobile Header */}
+                 <span className={`md:hidden px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
+                    {levelData?.title}
+                 </span>
+            </div>
+            <p className="text-xs md:text-sm text-slate-500 truncate">
                {isSearchActive
-                ? `Found ${questionsToDisplay.length} matches for "${searchQuery}"`
+                ? `Found ${questionsToDisplay.length} matches`
                 : isFavoritesView
-                  ? "Questions you marked as difficult or critical for review"
+                  ? "Questions marked as difficult"
                   : isBookmarksView 
-                    ? "Your personal collection of bookmarked topics" 
+                    ? "Your bookmarked topics" 
                     : (activeModule ? activeModule.desc : "Choose a topic from the sidebar")}
             </p>
           </div>
         </header>
 
         {/* Questions Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 pb-24 scroll-smooth">
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 pb-24 scroll-smooth">
           {questionsToDisplay.length > 0 ? (
             <div className="max-w-3xl mx-auto animate-fade-in">
               {questionsToDisplay.map((item) => (
@@ -481,26 +479,26 @@ const App: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 opacity-60">
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 opacity-60 p-6 text-center">
               {isSearchActive ? (
                 <>
-                  <div className="text-6xl mb-4">🔍</div>
-                  <p className="text-lg font-medium text-center">No matches found for "{searchQuery}".<br/>Try a different keyword.</p>
+                  <div className="text-5xl md:text-6xl mb-4">🔍</div>
+                  <p className="text-base md:text-lg font-medium">No matches found for "{searchQuery}".<br/>Try a different keyword.</p>
                 </>
               ) : isFavoritesView ? (
                 <>
-                   <div className="text-6xl mb-4 opacity-50 text-rose-400">❤️</div>
-                   <p className="text-lg font-medium text-center">No difficult questions marked.<br/>Click the heart icon to track complex topics.</p>
+                   <div className="text-5xl md:text-6xl mb-4 opacity-50 text-rose-400">❤️</div>
+                   <p className="text-base md:text-lg font-medium">No difficult questions marked.<br/>Click the heart icon to track complex topics.</p>
                 </>
               ) : isBookmarksView ? (
                 <>
-                  <div className="text-6xl mb-4 opacity-50 text-yellow-400">⭐</div>
-                  <p className="text-lg font-medium text-center">No saved questions yet.<br/>Click the star icon on any question to save it.</p>
+                  <div className="text-5xl md:text-6xl mb-4 opacity-50 text-yellow-400">⭐</div>
+                  <p className="text-base md:text-lg font-medium">No saved questions yet.<br/>Click the star icon on any question to save it.</p>
                 </>
               ) : (
                 <>
-                  <div className="text-6xl mb-4">👈</div>
-                  <p className="text-lg font-medium text-center">Select a module from the menu<br/>to load questions.</p>
+                  <div className="text-5xl md:text-6xl mb-4">👈</div>
+                  <p className="text-base md:text-lg font-medium">Select a module from the menu<br/>to load questions.</p>
                 </>
               )}
             </div>

@@ -192,9 +192,9 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
   };
 
   return (
-    <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-6">
+    <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-6">
       <div className="flex items-center gap-2 mb-4">
-        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs transition-colors duration-300 ${isInterviewMode ? 'bg-violet-600 animate-pulse' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
+        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs transition-colors duration-300 flex-shrink-0 ${isInterviewMode ? 'bg-violet-600 animate-pulse' : 'bg-gradient-to-tr from-blue-500 to-purple-600'}`}>
           {isInterviewMode ? '🎤' : 'AI'}
         </div>
         <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wide">
@@ -215,7 +215,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
                         <select
                         value={selectedPersonaId}
                         onChange={(e) => setSelectedPersonaId(e.target.value as AIPersona)}
-                        className="appearance-none w-full bg-white border border-slate-300 text-slate-700 py-2.5 pl-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 text-sm font-medium shadow-sm cursor-pointer hover:border-slate-400 transition-colors"
+                        className="appearance-none w-full bg-white border border-slate-300 text-slate-700 py-3 pl-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 text-sm font-medium shadow-sm cursor-pointer hover:border-slate-400 transition-colors"
                         >
                         {PERSONAS.map(p => (
                             <option key={p.id} value={p.id}>{p.label}</option>
@@ -241,7 +241,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
         {/* Interview Mode Tip */}
         {isInterviewMode && (
             <div className="bg-violet-50 border border-violet-100 rounded-lg p-4 animate-fade-in relative">
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                    <div>
                         <p className="text-sm text-violet-800 font-medium mb-1">💬 Очередь ответа</p>
                         <p className="text-xs text-violet-600">
@@ -254,7 +254,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
                        <button 
                            onClick={handleGetHint}
                            disabled={hintLoading || !!hint}
-                           className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                           className="w-full sm:w-auto text-xs px-3 py-2 sm:py-1 bg-amber-100 text-amber-700 rounded border border-amber-200 hover:bg-amber-200 transition-colors flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                            title="Получить подсказку на текущий вопрос"
                        >
                            {hintLoading ? (
@@ -339,12 +339,12 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
             </div>
         ) : (
             /* Standard Actions */
-            <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+            <div className="flex flex-col sm:flex-row gap-3">
                 {/* Main Action Button */}
                 <button
                     onClick={() => handleAction()}
                     disabled={loading}
-                    className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm shadow-md transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed min-w-[200px] ${selectedPersonaConfig.style}`}
+                    className={`w-full sm:flex-1 py-3 px-4 rounded-lg font-bold text-sm shadow-md transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${selectedPersonaConfig.style}`}
                 >
                     {loading && activePersona === selectedPersonaId ? (
                     <>
@@ -371,7 +371,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
             <div className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                {activePersona === 'explain_code' ? '💻 Live Editor' : '🤖 Ответ AI'}
                <span className="opacity-50">|</span>
-               <span className="opacity-75">{getFeedbackLabel()}</span>
+               <span className="opacity-75 truncate max-w-[120px] sm:max-w-none">{getFeedbackLabel()}</span>
             </div>
             <div className="flex items-center gap-1">
               <button 
@@ -381,12 +381,12 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
                 {isCopied ? (
                    <>
                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                     <span className="text-green-500">Скопировано</span>
+                     <span className="text-green-500 hidden sm:inline">Скопировано</span>
                    </>
                 ) : (
                    <>
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                     <span>Копировать</span>
+                     <span className="hidden sm:inline">Копировать</span>
                    </>
                 )}
               </button>
@@ -400,7 +400,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
                   <textarea
                     value={editedCode}
                     onChange={(e) => setEditedCode(e.target.value)}
-                    className="w-full h-96 bg-slate-900 text-blue-300 font-mono text-sm p-4 focus:outline-none focus:ring-0 resize-y leading-relaxed"
+                    className="w-full h-64 sm:h-96 bg-slate-900 text-blue-300 font-mono text-xs sm:text-sm p-4 focus:outline-none focus:ring-0 resize-y leading-relaxed"
                     spellCheck={false}
                   />
                   <div className="absolute bottom-2 right-4 text-[10px] text-slate-600 pointer-events-none">
@@ -409,7 +409,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
               </div>
           ) : (
               // Standard Markdown View
-              <div className="p-5 prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-violet-700 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:border-collapse prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2 prose-td:border prose-td:border-slate-300 prose-td:p-2">
+              <div className="p-4 sm:p-5 prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-violet-700 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:border-collapse prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2 prose-td:border prose-td:border-slate-300 prose-td:p-2 prose-pre:overflow-x-auto prose-pre:bg-slate-800 prose-pre:text-slate-100">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {feedback || ''}
                 </ReactMarkdown>
