@@ -713,162 +713,239 @@ CRI -> Container Namespace (Stream stdin/stdout)
       }
     ]
   },
-  {
-    id: 's4', title: '4. Custom Resources & Automation (Operators)', desc: 'CRD, Controller, Reconcile Loop',
-    questions: [
-      {
-        q: "Детально объясни паттерн Controller и цикл Reconcile в Kubernetes.",
-        a: `<p>Контроллер — это цикл управления, который постоянно следит за <strong>текущим состоянием (Current State)</strong> и пытается привести его к <strong>желаемому состоянию (Desired State)</strong>, записанному в Etcd.</p>
-            <h4 class="font-bold mt-2">Цикл Reconcile (Согласование):</h4>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li><strong>Watch:</strong> Контроллер использует Informers/Reflectors для наблюдения за объектами в кластере (например, Deployment).</li>
-                <li><strong>Delta:</strong> При изменении (создание/изменение/удаление), объект ставится в очередь (Work Queue).</li>
-                <li><strong>Reconcile:</strong> Worker вынимает объект из очереди и запускает функцию:
-                    <br>а) <strong>Read Desired:</strong> Читает спецификацию (<code>.spec</code>) из Etcd.
-                    <br>б) <strong>Read Current:</strong> Читает текущее состояние (например, количество запущенных подов).
-                    <br>в) <strong>Act (Diff):</strong> Если <code>Desired != Current</code>, он создает/обновляет/удаляет ресурсы (например, создает новый ReplicaSet).
-                    <br>г) <strong>Update Status:</strong> Обновляет <code>.status</code> объекта.</li>
-            </ol>
-            <p class="mt-2 text-sm bg-gray-100 p-2 rounded">
-              Паттерн: <strong>Desired State</strong> (YAML) -> <strong>Controller</strong> (Loop) -> <strong>Current State</strong> (Cluster)
-            </p>`,
-        tip: "Главное свойство Reconcile Loop: он должен быть <strong>идемпотентным</strong>. Многократный запуск цикла с одними и теми же входными данными не должен приводить к разным результатам."
-      },
-      {
-        q: "Когда оправдано написание собственного Kubernetes Operator? Приведи пример.",
-        a: `<p>Оператор — это по сути Controller, который управляет <strong>Custom Resource Definitions (CRD)</strong>. Он инкапсулирует операционные знания о приложении.</p>
-            <h4 class="font-bold mt-2">Кейсы для Operator:</h4>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Complex Stateless:</strong> Управление сложным приложением (Spark Cluster), где нужно оркестрировать несколько Deployment, Services и ConfigMaps.</li>
-                <li><strong>Stateful Management:</strong> Управление базами данных (PostgreSQL Operator, Kafka Operator). Оператор знает, как делать Backup, Restore, Failover, как обновлять версии без потери кворума.</li>
-                <li><strong>Integration with External API:</strong> Нужно создавать ресурсы в облаке (AWS S3 Bucket, GCP Firewall) при создании CRD.</li>
-            </ul>
-            <p class="mt-2 text-sm bg-gray-100 p-2 rounded">
-              <strong>Когда НЕ нужен:</strong> Если нужно просто задеплоить набор YAML-файлов — достаточно Helm или Kustomize.
-            </p>`,
-        tip: "Хороший Operator не только деплоит, но и занимается жизненным циклом (Day 2 operations) — обновлением, бэкапом, масштабированием и мониторингом."
-      }
-    ]
-  },
-  {
-    id: 's5', title: '5. Service Mesh Deep Dive', desc: 'Istio, Envoy, mTLS, Observability',
-    questions: [
-      {
-        q: "Какова архитектура Istio и ключевая роль Envoy Proxy?",
-        a: `<p>Istio состоит из <strong>Control Plane</strong> и <strong>Data Plane</strong>.</p>
-            <h4 class="font-bold mt-2">Data Plane: Envoy Proxy</h4>
-            <p>Легковесный прокси, развернутый как <strong>Sidecar</strong> контейнер в каждом поде (рядом с приложением). Весь входящий и исходящий трафик пода перехватывается (через iptables) и проходит через Envoy. Envoy выполняет L7-функции (маршрутизация, метрики, mTLS, Rate Limiting).</p>
-            <h4 class="font-bold mt-2">Control Plane (Istiod):</h4>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Configuration:</strong> Берет CRD (VirtualService, DestinationRule) и преобразует их в нативный конфиг Envoy (по протоколу xDS).</li>
-                <li><strong>Security:</strong> Управляет Service Identity, выпускает и ротирует сертификаты для mTLS.</li>
-                <li><strong>Discovery:</strong> Предоставляет Envoy информацию о местоположении сервисов.</li>
-            </ul>`,
-        tip: "Istio - это не просто роутер, это унифицированная платформа для управления трафиком, безопасностью и наблюдаемостью в масштабе всего кластера."
-      },
-      {
-        q: "Как Service Mesh (Istio) реализует mTLS между сервисами?",
-        a: `<p>mTLS (Mutual TLS) означает, что обе стороны (клиент и сервер) должны предоставить сертификат для аутентификации.</p>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li><strong>Identity:</strong> Istiod (часть Control Plane) выступает как центр сертификации (CA). Каждому Envoy Sidecar (в каждом поде) выдается краткосрочный сертификат.</li>
-                <li><strong>Interception:</strong> Когда Под А хочет поговорить с Подом Б, трафик перехватывается Envoy-прокси Пода А.</li>
-                <li><strong>Encryption:</strong> Envoy А устанавливает TLS-соединение с Envoy Б, используя их уникальные сертификаты.</li>
-                <li><strong>Decryption:</strong> Envoy Б дешифрует трафик и отправляет его (уже в виде чистого HTTP) в контейнер приложения Пода Б.</li>
-            </ol>
-            <p class="mt-2"><strong>Важно:</strong> Это происходит <strong>прозрачно для приложения</strong>. Приложение продолжает работать с чистым HTTP, не зная о mTLS.</p>`,
-        tip: "Упомяните 'Zero Trust' — mTLS необходим для обеспечения безопасности внутри кластера (East-West traffic)."
-      }
-    ]
-  },
-  {
-    id: 's6', title: '6. Resiliency & Disaster Recovery', desc: 'Etcd Backup, Velero, RTO/RPO',
-    questions: [
-      {
-        q: "Опиши процесс резервного копирования Etcd и восстановления кластера.",
-        a: `<p>Etcd хранит все состояние кластера. Его бэкап критичен для DR.</p>
-            <h4 class="font-bold mt-2">Процесс Backup:</h4>
-            <p>Используется утилита <code>etcdctl snapshot save</code> на одной из Master-нод.</p>
-            <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
-# Подключение к локальному etcd (внутри static pod)
-ETCDCTL_API=3 etcdctl --endpoints=127.0.0.1:2379 \
---cacert=/etc/kubernetes/pki/etcd/ca.crt \
---cert=/etc/kubernetes/pki/etcd/server.crt \
---key=/etc/kubernetes/pki/etcd/server.key \
-snapshot save /var/lib/etcd/etcd-snapshot.db
-            </div>
-            <h4 class="font-bold mt-2">Процесс Restore:</h4>
-            <p>Восстановление с помощью <code>etcdctl snapshot restore</code> с последующей перезаписью каталога данных etcd. Кластер затем перезапускается с нуля. <strong>Важно:</strong> После восстановления все компоненты (поды, ноды) должны заново подключиться к API Server.</p>`,
-        tip: "Бэкап etcd — это DR <strong>Control Plane</strong>. Для DR <strong>Data Plane</strong> (приложений и данных) нужен Velero или аналоги."
-      },
-      {
-        q: "Что такое Velero и как он помогает в Disaster Recovery?",
-        a: `<p><strong>Velero</strong> (ранее Heptio Ark) — это инструмент для безопасного бэкапа и восстановления ресурсов кластера Kubernetes (включая Persistent Volumes).</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Бэкап:</strong> Создает snapshot ресурсов кластера (YAML-манифесты) и сохраняет их в объектном хранилище (S3, GCS).</li>
-                <li><strong>PV Snapshot:</strong> Интегрируется с CSI/Cloud API для создания снимков томов (PV).</li>
-                <li><strong>Восстановление:</strong> Может восстановить ресурсы в новый или существующий кластер, при необходимости меняя Namespace и StorageClass.</li>
-            </ul>`,
-        tip: "Velero особенно полезен для миграции кластера (Cloud to Cloud, On-Prem to Cloud) и для создания тестовых окружений из продакшн-бэкапов."
-      },
-      {
-        q: "В контексте K8s, как RTO и RPO зависят от выбранной стратегии DR?",
-        a: `<p>Это ключевые метрики в DR-планировании:</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>RTO (Recovery Time Objective):</strong> Максимальное время, в течение которого система должна быть восстановлена после сбоя. (Насколько быстро мы вернемся в строй?)</li>
-                <li><strong>RPO (Recovery Point Objective):</strong> Максимально допустимый объем потери данных (измеряется во времени). (Насколько старыми могут быть данные?)</li>
-            </ul>
-            <p class="mt-2"><strong>Зависимость:</strong></p>
-            <ul>
-                <li><strong>Cold Backup (Etcd snapshot):</strong> RPO может быть 4 часа (частота бэкапа), RTO — 1-2 часа (время на создание нового кластера и восстановление).</li>
-                <li><strong>Active/Active (Multi-cluster):</strong> RPO = 0 (синхронная репликация), RTO ≈ 0 (переключение балансировщика). Это самое дорогое решение.</li>
-            </ul>`,
-        tip: "Хороший архитектор всегда начинает планирование DR с согласования RTO/RPO с бизнесом. Именно эти цели определяют выбор между Velero (высокий RTO/RPO) и Multi-cluster (низкий RTO/RPO)."
-      }
-    ]
-  },
-  {
-    id: 's7', title: '7. Multi-Tenancy & Advanced Security', desc: 'AppArmor, Seccomp, OPA/Kyverno',
-    questions: [
-      {
-        q: "Объясни разницу между 'Hard' и 'Soft' Multi-tenancy.",
-        a: `<p>Multi-tenancy — это запуск нескольких изолированных пользователей/команд на одном кластере.</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Soft Multi-tenancy (Изоляция на уровне Namespace):</strong>
-                    <br><em>Механизмы:</em> RBAC, NetworkPolicy, ResourceQuota, LimitRange.
-                    <br><em>Безопасность:</em> Предотвращает случайные ошибки, но <strong>не защищает</strong> от злонамеренного (malicious) пользователя. Если злоумышленник скомпрометирует ядро ноды, весь кластер под угрозой.</li>
-                <li><strong>Hard Multi-tenancy (Изоляция на уровне Control Plane/Kernel):</strong>
-                    <br><em>Механизмы:</em> vCluster/KubeVirt (виртуальные кластеры), gVisor/Kata Containers (изоляция на уровне ядра).
-                    <br><em>Безопасность:</em> Каждый Tenant имеет свой API Server (vCluster) или использует отдельное изолированное ядро (gVisor). Это обеспечивает <strong>сильную изоляцию</strong>.</li>
-            </ul>`,
-        tip: "В большинстве корпоративных сценариев (Dev/QA/Prod) достаточно Soft Multi-tenancy. Hard Multi-tenancy нужен для публичных PaaS-платформ (вроде AWS Fargate), где клиенты не доверяют друг другу."
-      },
-      {
-        q: "Как AppArmor или Seccomp повышают безопасность контейнеров?",
-        a: `<p>Это механизмы мандатного управления доступом (Mandatory Access Control, MAC) в Linux, которые ограничивают системные вызовы (syscalls) процесса:</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Seccomp (Secure Computing Mode):</strong> Фильтр на уровне ядра Linux. Контейнерный движок (Containerd) использует Seccomp для установки дефолтного профиля, который разрешает около 300 безопасных syscalls и блокирует опасные (например, <code>reboot</code>, <code>mount</code>).</li>
-                <li><strong>AppArmor:</strong> Профиль безопасности на основе пути и сети. Более гибкий, чем Seccomp, позволяет ограничивать доступ к файловой системе и сетевым операциям.</li>
-            </ul>
-            <p class="mt-2 text-sm bg-gray-100 p-2 rounded">
-              <strong>K8s Connection:</strong> K8s может использовать аннотации пода (<code>seccomp.security.alpha.kubernetes.io/pod: runtime/default</code>) для применения профилей.
-            </p>`,
-        tip: "Seccomp — это первая линия защиты от эксплуатации уязвимостей в контейнерах, поскольку он резко снижает поверхность атаки, блокируя большинство 'ненужных' системных вызовов."
-      },
-      {
-        q: "В чем архитектурное отличие OPA Gatekeeper от Kyverno?",
-        a: `<p>Оба — Policy Engines (проверяющие Admission Webhooks), но используют разные языки политик:</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>OPA Gatekeeper (Open Policy Agent):</strong>
-                    <br><em>Язык:</em> <strong>Rego</strong>. Универсальный декларативный язык.
-                    <br><em>Архитектура:</em> Использует CRD (ConstraintTemplate и Constraint) для определения политик. Очень мощный, так как может проверять не только K8s объекты, но и внешние данные.</li>
-                <li><strong>Kyverno:</strong>
-                    <br><em>Язык:</em> <strong>YAML (K8s Native)</strong>. Использует знакомые K8s-спецификации.
-                    <br><em>Архитектура:</em> Имеет функции Mutation, Validation и Generation. Отлично подходит для автоматизации (например, авто-добавление меток или сайдкаров) и проще для K8s-инженеров, не знакомых с Rego.</li>
-            </ul>`,
-        tip: "Kyverno часто проще для начала, потому что использует YAML. OPA лучше для сложных кросс-ресурсных политик или если вам уже нужно использовать Rego вне K8s."
-      }
-    ]
-  }
+  {
+    "id": "s4",
+    "title": "4. GitOps & Operators",
+    "desc": "ArgoCD, Flux, Custom Controllers, Capability Levels",
+    "questions": [
+      {
+        "q": "В каких случаях архитектурно оправдано написание собственного Kubernetes Operator? Объясни через модель зрелости (Capability Levels).",
+        "a": `<p>Оператор — это контроллер, инкапсулирующий эксплуатационные знания (Operational Knowledge) в код. В отличие от Helm («отрендерить и забыть»), Оператор работает в бесконечном цикле согласования (Reconciliation Loop).</p>
+              <h4 class="font-bold mt-2">Решение принимается по модели зрелости (Capability Levels):</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Level I-II (Install & Upgrade):</strong> Базовая установка. Здесь Helm эффективнее и проще.</li>
+                  <li><strong>Level III (Full Lifecycle):</strong> Управление бэкапами и восстановлением. Helm не может инициировать бэкап по расписанию или восстановить кластер из S3 — это зона ответственности Оператора.</li>
+                  <li><strong>Level IV-V (Insights & Auto Pilot):</strong> Автомасштабирование и самолечение (Self-healing) на основе глубоких метрик приложения (например, лаг репликации), а не просто CPU/RAM.</li>
+              </ul>
+              <h4 class="font-bold mt-2">Ключевые сценарии (Use Cases):</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Stateful Management:</strong> Сложная логика БД (PostgreSQL, Kafka). Оператор знает, как безопасно переключить Master-ноду, дождаться синхронизации WAL-логов и только потом обновить старый Master.</li>
+                  <li><strong>Complex Stateless (Spark Operator):</strong> Оркестрация сложных задач, где нужно управлять драйверами и экзекьюторами, перезапускать их с умной политикой повторов и сохранять логи после завершения.</li>
+                  <li><strong>Infrastructure as Data (Crossplane):</strong> Паттерн, когда создание CRD в кластере (например, <code>RDSInstance</code>) вызывает создание реальных ресурсов в облаке (AWS RDS) через API провайдера.</li>
+              </ul>`,
+        "tip": "Используйте гибридный подход: устанавливайте сам контроллер Оператора через Helm, а ресурсы приложения разворачивайте через CRD. Это стандарт индустрии (Prometheus, Datadog, Istio)."
+      }
+    ]
+  },
+  {
+    "id": "s5",
+    "title": "5. Service Mesh Deep Dive",
+    "desc": "Istio, Envoy, mTLS, SDS, Observability",
+    "questions": [
+      {
+        "q": "Объясните архитектуру Service Mesh (на примере Istio) и ключевую роль Envoy Sidecar в обеспечении mTLS и Observability.",
+        "a": `<p>Istio реализует разделение на <strong>Control Plane</strong> (Istiod) и <strong>Data Plane</strong> (Envoy Proxy).</p>
+              <h4 class="font-bold mt-2">Data Plane: Envoy Proxy</h4>
+              <p>Envoy — это L7 прокси, работающий как <strong>Sidecar</strong> в каждом поде. Он работает вне процесса приложения (out-of-process), перехватывая весь трафик через iptables:</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Observability:</strong> Envoy видит каждый пакет и автоматически генерирует «Золотые сигналы» (Latency, Traffic, Errors) и распределенные трейсы, добавляя заголовки <code>x-b3-traceid</code>.</li>
+                  <li><strong>Traffic Management:</strong> Реализует канареечные релизы, Circuit Breaking и Retry политики прозрачно для кода.</li>
+              </ul>
+              <h4 class="font-bold mt-2">Control Plane (Istiod):</h4>
+              <p>Это монолитный процесс, который конфигурирует прокси через протокол <strong>xDS</strong> (gRPC API). Изменения в Kubernetes (новые поды, сервисы) транслируются в конфигурацию Envoy в реальном времени без перезагрузки прокси.</p>`,
+        "tip": "Ключевое преимущество — приложение не знает о существовании прокси. Это позволяет внедрять mTLS, трейсинг и сложный роутинг в Legacy-приложения (Brownfield deployment) без переписывания кода."
+      },
+      {
+        "q": "Как Service Mesh (Istio) реализует mTLS и безопасную ротацию сертификатов (SDS)?",
+        "a": `<p>Istio обеспечивает безопасность Zero Trust, используя механизм <strong>SDS (Secret Discovery Service)</strong>, чтобы избежать хранения ключей на диске.</p>
+              <ol class="list-decimal pl-5 mt-2 space-y-1">
+                  <li><strong>Identity (SPIFFE):</strong> Каждому ворклоаду присваивается уникальный ID: <code>spiffe://cluster.local/ns/prod/sa/frontend</code>.</li>
+                  <li><strong>Генерация ключей:</strong> <em>Istio Agent</em> (в sidecar-контейнере) генерирует приватный ключ в памяти и отправляет запрос на подпись (CSR) в Control Plane (Istiod). <strong>Приватный ключ никогда не покидает под.</strong></li>
+                  <li><strong>SDS Push:</strong> Istiod подписывает сертификат и возвращает его агенту. Агент передает его Envoy через локальный сокет.</li>
+                  <li><strong>Горячая ротация:</strong> Envoy хранит сертификаты только в оперативной памяти. Перед истечением срока действия (обычно 24ч) агент повторяет процесс, и Envoy переключается на новый сертификат мгновенно, без разрыва соединений.</li>
+              </ol>`,
+        "tip": "SDS архитектурно безопаснее, чем монтирование Kubernetes Secrets (файлов), так как исключает риск кражи ключа с диска ноды и решает проблему ротации сертификатов без рестарта подов."
+      }
+    ]
+  },
+  {
+    "id": "s6",
+    "title": "6. Resiliency & Disaster Recovery",
+    "desc": "Etcd Restore, Velero (CSI vs Kopia), RTO/RPO",
+    "questions": [
+      {
+        "q": "Как производится резервное копирование и восстановление Etcd? В чем риски процедуры восстановления?",
+        "a": `<p>Etcd — источник правды кластера. Его восстановление — деструктивная операция для Control Plane.</p>
+              <h4 class="font-bold mt-2">Процесс Backup:</h4>
+              <p>Выполняется <code>etcdctl snapshot save</code>. Это безопасно делать на работающем кластере (создается консистентный снимок BoltDB).</p>
+              <h4 class="font-bold mt-2">Критический процесс Restore:</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Остановка API:</strong> Перед восстановлением <strong>обязательно</strong> нужно остановить все экземпляры <code>kube-apiserver</code>. Иначе API-сервер может записать закэшированные (несогласованные) данные обратно в базу, повредив состояние.</li>
+                  <li><strong>Изоляция:</strong> Восстановление создает новый кластер. Необходимо сменить <code>--initial-cluster-token</code>, чтобы старые ноды не присоединились случайно.</li>
+                  <li><strong>Последствия:</strong> Во время процедуры Control Plane полностью недоступен. Поды продолжат работать, но скейлинг и самолечение невозможны.</li>
+              </ul>`,
+        "tip": "Бэкап Etcd спасает конфигурацию ресурсов, но НЕ данные приложений (PV). После восстановления кластер вернется в прошлое: поды, созданные после бэкапа, станут «сиротами» (их Deployment'ов не будет в базе) и потребуют ручной чистки."
+      },
+      {
+        "q": "Что такое Velero и чем отличаются методы бэкапа (CSI Snapshot vs File System Backup)?",
+        "a": `<p><strong>Velero</strong> — стандарт де-факто для DR данных приложений (Persistent Volumes) и миграции ресурсов.</p>
+              <h4 class="font-bold mt-2">Сравнение методов бэкапа:</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>CSI Snapshots (Native):</strong> Использует API облака (AWS EBS, Google PD) через <code>VolumeSnapshot</code> CRD.
+                      <br><em>Плюсы:</em> Мгновенная скорость (низкий RPO), crash-consistency.
+                      <br><em>Минусы:</em> Привязка к региону и провайдеру. Сложно перенести данные из AWS в Azure.</li>
+                  <li><strong>File System Backup (Kopia/Restic):</strong> Агент считывает файлы с диска пода и копирует в S3. Современный Velero использует движок <strong>Kopia</strong>.
+                      <br><em>Плюсы:</em> Универсальность. Позволяет миграцию On-Prem -> Cloud. Kopia поддерживает дедупликацию и сжатие.
+                      <br><em>Минусы:</em> Нагружает CPU/RAM узла, медленнее на миллионах мелких файлов.</li>
+              </ul>`,
+        "tip": "Для максимальной надежности комбинируйте: CSI Snapshots для быстрого восстановления внутри региона (Day-to-day DR) и File System Backup для долгосрочного хранения и защиты от полной потери региона (Cross-region DR)."
+      },
+      {
+        "q": "Как выбранная стратегия DR влияет на показатели RTO и RPO?",
+        "a": `<p><strong>RTO (Recovery Time)</strong> — время простоя. <strong>RPO (Recovery Point)</strong> — потеря данных.</p>
+              <h4 class="font-bold mt-2">Стратегии:</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Cold Backup (Velero/Etcd в S3):</strong>
+                      <br>RPO: Высокий (зависит от расписания, напр. 24ч).
+                      <br>RTO: Высокий (часы). Требуется поднять новый кластер и «налить» данные. Самый дешевый вариант.</li>
+                  <li><strong>Pilot Light (Active/Passive):</strong>
+                      <br>RPO: Средний (минуты). Асинхронная репликация на уровне хранилища (RDS Read Replica).
+                      <br>RTO: Средний. Control Plane жив, нужно только отмасштабировать Data Plane.</li>
+                  <li><strong>Active/Active (Multi-Cluster):</strong>
+                      <br>RPO/RTO: Близятся к нулю. Требует синхронной репликации и глобального балансировщика (GSLB). Экстремально дорого и сложно.</li>
+              </ul>`,
+        "tip": "Не обещайте бизнесу Zero RPO/RTO без бюджета на Multi-region архитектуру. Velero — это отличное решение, но это всегда компромисс в пользу стоимости, а не скорости."
+      }
+    ]
+  },
+  {
+    "id": "s7",
+    "title": "7. Multi-Tenancy & Advanced Security",
+    "desc": "vCluster, AppArmor v1.30, Kyverno vs Gatekeeper",
+    "questions": [
+      {
+        "q": "Объясни разницу между 'Hard' и 'Soft' Multi-tenancy. Роль vCluster.",
+        "a": `<p>Различие заключается в глубине изоляции ресурсов и Control Plane.</p>
+              <h4 class="font-bold mt-2">Soft Multi-tenancy (Namespace Isolation):</h4>
+              <p>Подходит для доверенных команд. Использует RBAC, NetworkPolicy и Quotas. <strong>Риск:</strong> Все тенанты делят одно ядро Linux и один API-сервер. Уязвимость ядра или перегрузка API затронет всех.</p>
+              <h4 class="font-bold mt-2">Hard Multi-tenancy (Изоляция уровня ядра/API):</h4>
+              <p>Необходима, когда тенанты не доверяют друг другу (SaaS).</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>vCluster (Virtual Cluster):</strong> Решает проблему общего API-сервера. Запускает виртуальный K8s внутри пода хост-кластера. Тенант получает полные права (может создавать CRD, Namespaces), не влияя на хост.</li>
+                  <li><strong>Runtime Isolation:</strong> Использование gVisor или Kata Containers для изоляции на уровне ядра.</li>
+              </ul>`,
+        "tip": "Для настоящей 'Hard' мультитеннантности недостаточно Namespaces. Современный эталон — это комбинация vCluster (изоляция логики) + gVisor (изоляция рантайма)."
+      },
+      {
+        "q": "Как правильно настроить AppArmor в современных версиях Kubernetes (v1.30+)?",
+        "a": `<p>AppArmor (механизм безопасности ядра Linux) ограничивает доступ процессов к файловой системе и сети. Важно учитывать изменение API.</p>
+              <h4 class="font-bold mt-2">Критическое изменение (v1.30+):</h4>
+              <p>Использование аннотаций (<code>container.apparmor...</code>) официально <strong>объявлено устаревшим (deprecated)</strong>. Теперь настройка производится через поле <code>securityContext</code>.</p>
+              <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
+# Правильная конфигурация (K8s 1.30+)
+spec:
+  securityContext:
+    appArmorProfile:
+      type: RuntimeDefault # или 'Localhost'
+              </div>
+              <p>Профиль <code>RuntimeDefault</code> блокирует множество векторов атак и рекомендуется как минимальный стандарт.</p>`,
+        "tip": "Pod Security Standards (уровень Restricted) требуют явной настройки профилей AppArmor и Seccomp. Переходите на нативные поля спецификации, отказываясь от аннотаций, чтобы избежать техдолга."
+      },
+      {
+        "q": "OPA Gatekeeper vs Kyverno: В чем ключевое архитектурное преимущество Kyverno?",
+        "a": `<p>Оба инструмента — Policy Engines (Admission Controllers), но с разной философией.</p>
+              <h4 class="font-bold mt-2">OPA Gatekeeper (Rego):</h4>
+              <p>Использует язык <strong>Rego</strong>. Это мощный, универсальный язык, но с высоким порогом входа. Подходит для сложнейших корпоративных политик и кросс-системных проверок.</p>
+              <h4 class="font-bold mt-2">Kyverno (K8s-native):</h4>
+              <p>Использует YAML. Главное преимущество — <strong>Generation (Генерация)</strong>.</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li>Kyverno умеет не только валидировать, но и <strong>создавать</strong> ресурсы. Например, при создании нового Namespace он автоматически сгенерирует дефолтные <code>NetworkPolicy</code>, <code>ResourceQuota</code> и <code>RoleBinding</code>.</li>
+                  <li>Это делает Kyverno идеальным инструментом для автоматизации настройки окружений (Soft Multi-tenancy) без написания сложных операторов.</li>
+              </ul>`,
+        "tip": "Выбирайте Kyverno, если вам нужно быстро автоматизировать рутину и вы не хотите учить Rego. Выбирайте OPA, если у вас уже есть экосистема политик на Rego вне Kubernetes."
+      }
+    ]
+  }
+  {
+  id: 's8', title: '8. CI/CD & Supply Chain Security', desc: 'Tekton, ArgoCD Image Updater, Cosign, SBOM',
+  questions: [
+    {
+      q: "В чем архитектурное преимущество Tekton перед Jenkins в среде Kubernetes?",
+      a: `<p>Tekton — это <strong>Kubernetes-native</strong> фреймворк, в то время как Jenkins — это традиционный сервер.</p>
+          <ul class="list-disc pl-5 mt-2 space-y-1">
+              <li><strong>Serverless:</strong> У Tekton нет постоянно запущенного «мастера». Каждый шаг пайплайна запускается как отдельный Pod (Container) по требованию и умирает после выполнения. Это экономит ресурсы.</li>
+              <li><strong>Decoupling:</strong> Логика описана через CRD (Custom Resource Definitions): <code>Task</code>, <code>Pipeline</code>, <code>PipelineRun</code>. Это позволяет переиспользовать Таски между разными пайплайнами.</li>
+              <li><strong>Isolation:</strong> Каждый шаг выполняется в изолированном контейнере, что решает проблему «Dependency Hell» (конфликтов плагинов и версий библиотек), свойственную Jenkins.</li>
+          </ul>`,
+      tip: "Jenkins хорош для легаси и VM. Tekton идеален, если вы хотите строить пайплайны как код (YAML) и управлять ими через GitOps (ArgoCD может деплоить Tekton Pipelines)."
+    },
+    {
+      q: "Как автоматизировать обновление тега образа в GitOps (ArgoCD) после CI-сборки?",
+      a: `<p>В чистом GitOps CI-система не должна иметь доступ к кластеру (kubectl apply). Она должна только пушить Docker-образ и обновлять Git-репозиторий.</p>
+          <h4 class="font-bold mt-2">Паттерн с ArgoCD Image Updater:</h4>
+          <ol class="list-decimal pl-5 mt-2 space-y-1">
+              <li><strong>CI (GitHub Actions):</strong> Собирает приложение, тегирует его (например, <code>sha-123</code>) и пушит в Registry.</li>
+              <li><strong>Registry:</strong> Появляется новый тег.</li>
+              <li><strong>ArgoCD Image Updater:</strong> Сканирует Registry, видит новый тег (по стратегии, например, <em>Newest Build</em>), делает <code>git commit</code> в репозиторий с манифестами (обновляет <code>values.yaml</code> или Kustomize image tag).</li>
+              <li><strong>ArgoCD:</strong> Видит изменение в Git и синхронизирует кластер.</li>
+          </ol>`,
+      tip: "Избегайте использования тега <code>latest</code> в продакшене. ArgoCD не увидит изменений, если хеш образа изменился, а тег остался тем же (без настройки `imagePullPolicy: Always` и рестарта подов). Используйте SHA-теги или семантическое версионирование."
+    },
+    {
+      q: "Как обеспечить Supply Chain Security используя Cosign и Admission Controller?",
+      a: `<p>Безопасность цепочки поставок гарантирует, что запущенный в кластере код — это именно то, что вы собрали.</p>
+          <h4 class="font-bold mt-2">Процесс защиты (Sigstore/Cosign):</h4>
+          <ul class="list-disc pl-5 mt-2 space-y-1">
+              <li><strong>Signing (CI):</strong> После сборки CI-система подписывает образ закрытым ключом:
+                  <div class="bg-slate-800 text-white p-2 rounded text-xs font-mono mt-1">cosign sign --key cosign.key my-repo/app:v1</div>
+              </li>
+              <li><strong>Verification (Cluster):</strong> Admission Controller (Kyverno или Gatekeeper) имеет публичный ключ. При попытке создания Пода он проверяет подпись образа в реестре.</li>
+              <li><strong>Enforcement:</strong> Если подпись невалидна или отсутствует, контроллер блокирует деплой.</li>
+          </ul>
+          <p class="mt-2">Также часто генерируется <strong>SBOM</strong> (Software Bill of Materials) для сканирования уязвимостей.</p>`,
+      tip: "Внедрение подписи образов предотвращает атаки типа 'Man-in-the-Middle' и запуск вредоносных контейнеров из недоверенных источников."
+    }
+  ]
+}
+{
+  id: 's9', title: '9. Observability Deep Dive', desc: 'Prometheus vs VictoriaMetrics, eBPF, Tracing Sampling',
+  questions: [
+    {
+      q: "В чем ключевые архитектурные отличия VictoriaMetrics от Prometheus и почему выбирают первую для High Load?",
+      a: `<p>Хотя VictoriaMetrics (VM) полностью совместима с PromQL, архитектурно она решает главные "боли" Prometheus:</p>
+          <ul class="list-disc pl-5 mt-2 space-y-1">
+              <li><strong>Storage & Compression:</strong> Prometheus использует TSDB с вертикальным сжатием. VM использует архитектуру MergeTree (похожую на ClickHouse), обеспечивая сжатие данных в 7-10 раз лучше и гораздо меньшее потребление RAM при большом количестве активных временных рядов (High Cardinality).</li>
+              <li><strong>Push vs Pull:</strong> Prometheus строго следует <em>Pull-модели</em>. VM поддерживает как Pull, так и эффективный <em>Push</em> (через vmagent), что критично для IoT или нестабильных сетей.</li>
+              <li><strong>Long-term Retention:</strong> Prometheus не предназначен для хранения данных годами (обычно 15-30 дней). VM создана как Long-term storage (LTS) с возможностью даунсэмплинга (downsampling) старых данных.</li>
+          </ul>`,
+      tip: "Частый паттерн: использовать Prometheus локально на кластерах только для скрапинга и алертинга (short retention), а данные отправлять через Remote Write в централизованный кластер VictoriaMetrics для долговременного хранения и аналитики."
+    },
+    {
+      q: "Что такое eBPF в контексте Observability и какие преимущества он дает перед Sidecar-подходом (Envoy)?",
+      a: `<p><strong>eBPF (Extended Berkeley Packet Filter)</strong> позволяет запускать песочницы с кодом прямо в ядре Linux без его пересборки.</p>
+          <h4 class="font-bold mt-2">Преимущества перед Sidecar (Istio/Linkerd):</h4>
+          <ul class="list-disc pl-5 mt-2 space-y-1">
+              <li><strong>Zero Instrumentation:</strong> Не нужно менять код приложения или внедрять sidecar-контейнеры в каждый Pod. eBPF видит все системные вызовы на уровне ядра.</li>
+              <li><strong>Performance:</strong> Отсутствие накладных расходов на сетевой стек (User space -> Kernel space -> Sidecar -> Kernel space). eBPF работает на скоростях ядра.</li>
+              <li><strong>Visibility:</strong> Инструменты вроде <em>Pixie</em> или <em>Cilium Hubble</em> могут автоматически строить карту сервисов, замерять DNS-задержки и анализировать TCP-ретрансмиты, что невидимо для обычных прокси уровня L7.</li>
+          </ul>`,
+      tip: "eBPF не убивает Service Mesh, а дополняет его. Sidecar все еще нужен для сложной логики L7 (mTLS, circuit breaking), но для чистого мониторинга (Observability) eBPF становится стандартом де-факто."
+    },
+    {
+      q: "Объясните разницу между Head-based и Tail-based Sampling в распределенном трейсинге (Jaeger/OpenTelemetry).",
+      a: `<p>Сэмплинг необходим, так как сохранять 100% трейсов в высоконагруженной системе слишком дорого (CPU + Storage).</p>
+          <h4 class="font-bold mt-2">1. Head-based Sampling:</h4>
+          <p>Решение принимается <strong>в начале</strong> запроса (на первом сервисе).
+          <br><em>Пример:</em> "Сохранять каждый 10-й запрос".
+          <br><em>Проблема:</em> Вы можете пропустить редкую ошибку, так как решение "отбросить" было принято до того, как ошибка произошла.</p>
+          <h4 class="font-bold mt-2">2. Tail-based Sampling:</h4>
+          <p>Решение принимается <strong>в конце</strong>, когда весь трейс уже собран в буфере (например, в OTEL Collector).
+          <br><em>Логика:</em> "Если в трейсе есть статус 500 или latency > 2s — сохранить, иначе — отбросить".
+          <br><em>Цена:</em> Требует много памяти на коллекторе для буферизации всех "живых" спанов до завершения запроса.</p>`,
+      tip: "Для продакшена идеальна комбинация: Probabilistic (1%) для понимания общей картины + Tail-based для 100% сохранения ошибок и медленных запросов."
+    }
+  ]
+}
 ];
 
 export const LEVELS: Record<string, LevelConfig> = {

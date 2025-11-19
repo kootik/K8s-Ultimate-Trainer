@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -171,9 +170,9 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
   };
 
   const getFeedbackLabel = () => {
-    if (isInterviewMode) return 'Interactive Interview';
-    if (activePersona === 'explain_code') return 'Live Code Editor';
-    if (activePersona === 'start_interview') return 'Interactive Interview';
+    if (isInterviewMode) return 'Интерактивное интервью';
+    if (activePersona === 'explain_code') return 'Live редактор кода';
+    if (activePersona === 'start_interview') return 'Интерактивное интервью';
     return PERSONAS.find(p => p.id === activePersona)?.label;
   };
 
@@ -383,7 +382,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
                         <span>Анализирую...</span>
                     </>
                     ) : (
-                    <span>🚀 Запустить: {selectedPersonaConfig.label}</span>
+                    <span>🚀 Запустить: {getNameFromLabel(selectedPersonaConfig.label)}</span>
                     )}
                 </button>
             </div>

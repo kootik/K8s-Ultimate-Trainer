@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Question } from '../types';
 import AIFeedback from './AIFeedback';
@@ -140,7 +139,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                         ? 'text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-900/20' 
                         : 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
-                    aria-label={isFavorite ? "Remove from important" : "Mark as Difficult"}
+                    aria-label={isFavorite ? "Убрать из важного" : "Отметить как сложное"}
                     >
                         <svg className={`w-6 h-6 ${isFavorite ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -155,7 +154,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                         ? 'text-yellow-400 hover:text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' 
                         : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
-                    aria-label={isBookmarked ? "Remove from saved" : "Save for later"}
+                    aria-label={isBookmarked ? "Убрать из закладок" : "Сохранить в закладки"}
                     >
                         <svg className={`w-6 h-6 ${isBookmarked ? 'fill-current' : 'fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -206,7 +205,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   className="w-full sm:w-auto whitespace-nowrap px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                  <span>Активировать AI</span>
+                  <span>Включить AI</span>
                 </button>
               </div>
             ) : (
@@ -244,7 +243,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                               ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 shadow-sm' 
                               : 'bg-white/80 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:text-blue-600 hover:border-blue-200 hover:shadow-sm'
                           }`}
-                          aria-label="Copy Question & Answer"
+                          aria-label="Копировать вопрос и ответ"
                           >
                           <div className="relative w-4 h-4 flex items-center justify-center">
                               {/* Checkmark Icon (Scale In) */}
@@ -264,7 +263,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                               </svg>
                           </div>
                           <span className={`transition-colors duration-200 ${isAnswerCopied ? 'text-green-600 dark:text-green-400' : ''}`}>
-                              {isAnswerCopied ? 'Copied!' : 'Copy Q&A'}
+                              {isAnswerCopied ? 'Скопировано!' : 'Копировать'}
                           </span>
                           </button>
                       </div>
@@ -279,7 +278,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                       {data.tip && (
                       <div className="mt-6 relative pl-4 border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-r-lg">
                           <span className="absolute -top-3 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                          Pro Tip
+                          Совет
                           </span>
                           <p className="text-emerald-800 dark:text-emerald-200 text-sm italic mt-1">{renderHighlightedText(data.tip, searchQuery)}</p>
                       </div>

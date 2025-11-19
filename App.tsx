@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { LevelType, LevelConfig } from './types';
 import { LEVELS } from './constants';
@@ -49,13 +48,14 @@ const App: React.FC = () => {
     localStorage.setItem('k8s-trainer-favorites', JSON.stringify(Array.from(favorites)));
   }, [favorites]);
 
-  // Persist Theme
+  // Persist Theme - This applies the class to the HTML tag which Tailwind watches
   useEffect(() => {
     localStorage.setItem('k8s-trainer-theme', darkMode ? 'dark' : 'light');
+    const root = window.document.documentElement;
     if (darkMode) {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
     }
   }, [darkMode]);
 
@@ -236,50 +236,48 @@ const App: React.FC = () => {
   // --- RENDER: LANDING PAGE ---
   if (!currentLevel) {
     return (
-      <div className={darkMode ? 'dark' : ''}>
-        <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 overflow-y-auto transition-colors duration-500 ease-in-out">
-          <div className="absolute top-4 right-4 z-50">
-             <button 
-                onClick={toggleTheme}
-                className="p-2 rounded-full bg-white dark:bg-slate-800 shadow-md text-slate-600 dark:text-slate-300 hover:scale-110 transition-all duration-300 border border-slate-200 dark:border-slate-700"
-                aria-label="Toggle Theme"
-              >
-                {darkMode ? '☀️' : '🌙'}
-              </button>
+      <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 overflow-y-auto">
+        <div className="absolute top-4 right-4 z-50">
+            <button 
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-white dark:bg-slate-800 shadow-md text-slate-600 dark:text-slate-300 hover:scale-110 border border-slate-200 dark:border-slate-700"
+              aria-label="Сменить тему"
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-16 pb-32">
+          <div className="text-center mb-8 md:mb-16 animate-fade-in">
+            <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4 md:mb-6">
+              Kubernetes <span className="text-blue-600 dark:text-blue-400">Ultimate Hub</span>
+            </h1>
+            <p className="text-base md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
+              AI-тренажер для подготовки к техническим интервью. Освойте K8s от базовых примитивов до ядра Linux.
+            </p>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-16 pb-32">
-            <div className="text-center mb-8 md:mb-16 animate-fade-in">
-              <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4 md:mb-6 transition-colors duration-300">
-                Kubernetes <span className="text-blue-600 dark:text-blue-400">Ultimate Hub</span>
-              </h1>
-              <p className="text-base md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed transition-colors duration-300">
-                AI-Powered Interview Trainer. Master K8s from Core to Kernel.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
-              {(Object.values(LEVELS) as LevelConfig[]).map((level, idx) => (
-                <div 
-                  key={level.id}
-                  onClick={() => handleLevelSelect(level.id)}
-                  className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100 border-x border-b border-slate-100 dark:border-slate-700`}
-                  style={{ animationDelay: `${idx * 100}ms` }}
-                >
-                  <div className="flex items-center justify-between md:block mb-4 md:mb-6">
-                      <div className="text-4xl md:text-6xl transform group-hover:scale-110 transition-transform duration-300">{level.icon}</div>
-                      <h2 className={`text-xl md:text-2xl font-bold text-slate-800 dark:text-white ${level.textHover} transition-colors md:mt-6`}>{level.title}</h2>
-                  </div>
-                  <p className={`text-xs font-bold uppercase tracking-wider mb-2 md:mb-4 mt-1 text-${level.color} dark:opacity-90`}>{level.subTitle}</p>
-                  <p className="text-slate-600 dark:text-slate-300 mb-6 md:mb-8 text-sm leading-relaxed flex-grow transition-colors duration-300">
-                    {level.description}
-                  </p>
-                  <button className={`w-full py-3 rounded-lg font-bold text-sm bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 ${level.bgHover} group-hover:text-white transition-all shadow-sm border border-slate-100 dark:border-slate-600`}>
-                    Start Training
-                  </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
+            {(Object.values(LEVELS) as LevelConfig[]).map((level, idx) => (
+              <div 
+                key={level.id}
+                onClick={() => handleLevelSelect(level.id)}
+                className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100 border-x border-b border-slate-100 dark:border-slate-700/50`}
+                style={{ animationDelay: `${idx * 100}ms` }}
+              >
+                <div className="flex items-center justify-between md:block mb-4 md:mb-6">
+                    <div className="text-4xl md:text-6xl transform group-hover:scale-110 transition-transform duration-300">{level.icon}</div>
+                    <h2 className={`text-xl md:text-2xl font-bold text-slate-800 dark:text-white ${level.textHover} transition-colors md:mt-6`}>{level.title}</h2>
                 </div>
-              ))}
-            </div>
+                <p className={`text-xs font-bold uppercase tracking-wider mb-2 md:mb-4 mt-1 text-${level.color} dark:opacity-90`}>{level.subTitle}</p>
+                <p className="text-slate-600 dark:text-slate-300 mb-6 md:mb-8 text-sm leading-relaxed flex-grow">
+                  {level.description}
+                </p>
+                <button className={`w-full py-3 rounded-lg font-bold text-sm bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 ${level.bgHover} group-hover:text-white transition-all shadow-sm border border-slate-100 dark:border-slate-600`}>
+                  Начать обучение
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -288,270 +286,270 @@ const App: React.FC = () => {
 
   // --- RENDER: MAIN APP ---
   return (
-    <div className={darkMode ? 'dark' : ''}>
-      <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 relative transition-colors duration-500 ease-in-out">
-        
-        {/* Mobile Overlay */}
-        <div 
-          className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-20 md:hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 relative">
+      
+      {/* Mobile Overlay */}
+      <div 
+        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-20 md:hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
 
-        {/* Sidebar */}
-        <aside className={`
-          fixed inset-y-0 left-0 z-30 w-72 md:w-80 bg-slate-900 dark:bg-slate-950 text-white flex flex-col flex-shrink-0 shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800
-          md:static md:translate-x-0 md:shadow-xl
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}>
-          <div className="p-6 border-b border-slate-800 bg-slate-900 dark:bg-slate-950 transition-colors duration-300">
-            {/* Sidebar Header with Level Switcher */}
-            <div className="flex items-center justify-between mb-4">
-               <h1 className="text-xl font-bold text-white tracking-tight cursor-pointer" onClick={handleGoHome}>K8s Trainer</h1>
-               <div className="flex items-center gap-3 md:hidden">
-                  <button 
-                    onClick={toggleTheme}
-                    className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors border border-slate-700"
-                    aria-label="Toggle Theme"
-                  >
-                    {darkMode ? '☀️' : '🌙'}
-                  </button>
-                  <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-               </div>
-            </div>
-            
-            {/* Inline Level Switcher */}
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.values(LEVELS) as LevelConfig[]).map((level) => {
-                 const isActive = currentLevel === level.id;
-                 return (
-                   <button
-                      key={level.id}
-                      onClick={() => handleLevelSelect(level.id)}
-                      className={`
-                        px-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all text-center border
-                        ${isActive 
-                          ? `bg-${level.color} text-white border-${level.color} shadow-md transform scale-105` 
-                          : 'bg-slate-800 text-slate-500 border-slate-700 hover:bg-slate-700 hover:text-slate-300'
-                        }
-                      `}
-                   >
-                      {level.title}
-                   </button>
-                 );
-              })}
-            </div>
-          </div>
-
-          {/* Search Input */}
-          <div className="px-4 pt-4 pb-2 bg-slate-900 dark:bg-slate-950 transition-colors duration-300">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-lg leading-5 bg-slate-800 dark:bg-slate-900 text-slate-300 placeholder-slate-500 focus:outline-none focus:bg-slate-700 focus:border-slate-600 focus:text-white sm:text-sm transition-colors duration-300"
-                placeholder="Filter modules..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {isSearchActive && (
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-30 w-72 md:w-80 
+        bg-slate-900 dark:bg-slate-950 
+        text-white flex flex-col flex-shrink-0 shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800 dark:border-slate-900
+        md:static md:translate-x-0 md:shadow-xl
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="p-6 border-b border-slate-800 dark:border-slate-900 bg-slate-900 dark:bg-slate-950">
+          {/* Sidebar Header with Level Switcher */}
+          <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold text-white tracking-tight cursor-pointer" onClick={handleGoHome}>K8s Trainer</h1>
+              <div className="flex items-center gap-3 md:hidden">
                 <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white cursor-pointer group/app relative"
-                  aria-label="Clear search"
+                  onClick={toggleTheme}
+                  className="p-2 rounded-full bg-slate-800 dark:bg-slate-900 text-slate-400 hover:text-white transition-colors border border-slate-700"
+                  aria-label="Сменить тему"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  {darkMode ? '☀️' : '🌙'}
                 </button>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+          </div>
+          
+          {/* Inline Level Switcher */}
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.values(LEVELS) as LevelConfig[]).map((level) => {
+                const isActive = currentLevel === level.id;
+                return (
+                  <button
+                    key={level.id}
+                    onClick={() => handleLevelSelect(level.id)}
+                    className={`
+                      px-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all text-center border
+                      ${isActive 
+                        ? `bg-${level.color} text-white border-${level.color} shadow-md transform scale-105` 
+                        : 'bg-slate-800 dark:bg-slate-900 text-slate-500 border-slate-700 hover:bg-slate-700 hover:text-slate-300'
+                      }
+                    `}
+                  >
+                    {level.title}
+                  </button>
+                );
+            })}
+          </div>
+        </div>
+
+        {/* Search Input */}
+        <div className="px-4 pt-4 pb-2 bg-slate-900 dark:bg-slate-950">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-slate-700 dark:border-slate-800 rounded-lg leading-5 bg-slate-800 dark:bg-slate-900 text-slate-300 placeholder-slate-500 focus:outline-none focus:bg-slate-700 focus:border-slate-600 focus:text-white sm:text-sm"
+              placeholder="Фильтр модулей..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {isSearchActive && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white cursor-pointer group/app relative"
+                aria-label="Очистить поиск"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-700 bg-slate-900 dark:bg-slate-950">
+          {/* Bookmarks & Favorites Navigation Items */}
+          {!isSearchActive && (
+            <>
+              <button
+                onClick={handleFavoritesSelect}
+                className={`w-full text-left px-4 py-3 rounded-lg mb-1 text-sm font-bold transition-all flex items-center gap-2 group
+                  ${currentModuleId === 'favorites' 
+                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
+                  }`}
+              >
+                  <svg className="w-4 h-4 text-rose-500 fill-current" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                <span className="flex-grow">Важное / Сложное</span>
+                {levelFavoritesCount > 0 && (
+                    <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-extrabold shadow-sm">
+                      {levelFavoritesCount}
+                    </span>
+                )}
+              </button>
+
+              <button
+                onClick={handleBookmarksSelect}
+                className={`w-full text-left px-4 py-3 rounded-lg mb-4 text-sm font-bold transition-all flex items-center gap-2 group
+                  ${currentModuleId === 'bookmarks' 
+                    ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
+                  }`}
+              >
+                  <svg className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                <span className="flex-grow">Закладки</span>
+                {levelBookmarksCount > 0 && (
+                    <span className="text-[10px] bg-yellow-500 text-slate-900 px-2 py-0.5 rounded-full font-extrabold shadow-sm">
+                      {levelBookmarksCount}
+                    </span>
+                )}
+              </button>
+              <div className="h-px bg-slate-800 dark:bg-slate-900 mb-4 mx-2"></div>
+            </>
+          )}
+
+          {sidebarModules.length > 0 ? (
+            sidebarModules.map(mod => (
+              <button
+                key={mod.id}
+                onClick={() => handleModuleSelect(mod.id)}
+                className={`w-full text-left px-4 py-3 rounded-lg mb-1 text-sm font-medium transition-all flex items-center justify-between group
+                  ${currentModuleId === mod.id && !isSearchActive
+                    ? 'bg-white/10 text-white border-l-4 border-white' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white border-l-4 border-transparent'
+                  }`}
+              >
+                <span className="truncate mr-2">{mod.title}</span>
+                <span className="text-[10px] bg-slate-800 dark:bg-slate-900 px-2 py-0.5 rounded-full text-slate-500 group-hover:text-white">{mod.questions.length}</span>
+              </button>
+            ))
+          ) : (
+              <div className="text-center py-4 text-slate-500 text-xs">Модули не найдены</div>
+          )}
+        </nav>
+
+        <div className="p-5 bg-slate-800 dark:bg-slate-950 border-t border-slate-700 dark:border-slate-900">
+          <div className="flex justify-between items-end mb-2">
+            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Прогресс</div>
+            <div className="text-sm font-mono text-white">{Math.round(progress)}%</div>
+          </div>
+          <div className="w-full bg-slate-700 dark:bg-slate-900 rounded-full h-2">
+            <div 
+              className={`bg-${levelData?.color} h-2 rounded-full transition-all duration-500`} 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 dark:bg-slate-900 w-full">
+        {/* Mobile Header */}
+        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-6 flex items-center shadow-sm z-10 flex-shrink-0">
+          <div className="md:hidden mr-3 flex items-center">
+              <button 
+                onClick={() => setIsMobileMenuOpen(true)} 
+                className="text-slate-700 dark:text-slate-200 hover:text-blue-600 transition-colors p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 -ml-2"
+                aria-label="Открыть меню"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </button>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+                <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white truncate">
+                {isSearchActive
+                    ? "Результаты поиска"
+                    : isFavoritesView
+                    ? "Важное / Сложное"
+                    : isBookmarksView 
+                        ? "Закладки" 
+                        : (activeModule ? activeModule.title : "Выберите модуль")}
+                </h2>
+                  {/* Show Level Badge on Mobile Header */}
+                  <span className={`md:hidden px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
+                    {levelData?.title}
+                  </span>
+            </div>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 truncate">
+                {isSearchActive
+                ? `Найдено совпадений: ${questionsToDisplay.length}`
+                : isFavoritesView
+                  ? "Вопросы, отмеченные как сложные"
+                  : isBookmarksView 
+                    ? "Ваши сохраненные темы" 
+                    : (activeModule ? activeModule.desc : "Выберите тему в меню слева")}
+            </p>
+          </div>
+          
+          {/* Desktop Theme Toggle */}
+          <button 
+              onClick={toggleTheme}
+              className="hidden md:flex ml-4 p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-300 hover:scale-105 border border-slate-200 dark:border-slate-600"
+              aria-label="Сменить тему"
+            >
+              {darkMode ? '☀️' : '🌙'}
+          </button>
+        </header>
+
+        {/* Questions Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 pb-24 scroll-smooth">
+          {questionsToDisplay.length > 0 ? (
+            <div className="max-w-3xl mx-auto animate-fade-in">
+              {questionsToDisplay.map((item) => (
+                <div key={item.id}>
+                    {isSearchActive && (item as any).moduleTitle && (
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6 first:mt-0">
+                          Модуль: {(item as any).moduleTitle}
+                        </div>
+                    )}
+                  <QuestionCard
+                    index={item.originalIndex}
+                    data={item.data}
+                    isRead={readQuestions.has(item.id)}
+                    isBookmarked={bookmarks.has(item.id)}
+                    isFavorite={favorites.has(item.id)}
+                    onReveal={() => handleMarkRead(item.id)}
+                    onToggleBookmark={() => toggleBookmark(item.id)}
+                    onToggleFavorite={() => toggleFavorite(item.id)}
+                    levelColor={levelData?.color || 'blue-600'}
+                    searchQuery={searchQuery}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 opacity-60 p-6 text-center">
+              {isSearchActive ? (
+                <>
+                  <div className="text-5xl md:text-6xl mb-4">🔍</div>
+                  <p className="text-base md:text-lg font-medium">По запросу "{searchQuery}" ничего не найдено.<br/>Попробуйте изменить ключевые слова.</p>
+                </>
+              ) : isFavoritesView ? (
+                <>
+                    <div className="text-5xl md:text-6xl mb-4 opacity-50 text-rose-400">❤️</div>
+                    <p className="text-base md:text-lg font-medium">Нет сложных вопросов.<br/>Нажмите на иконку сердца, чтобы отметить сложные темы.</p>
+                </>
+              ) : isBookmarksView ? (
+                <>
+                  <div className="text-5xl md:text-6xl mb-4 opacity-50 text-yellow-400">⭐</div>
+                  <p className="text-base md:text-lg font-medium">Нет закладок.<br/>Нажмите на звездочку, чтобы сохранить вопрос.</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-5xl md:text-6xl mb-4">👈</div>
+                  <p className="text-base md:text-lg font-medium">Выберите модуль в меню,<br/>чтобы загрузить вопросы.</p>
+                </>
               )}
             </div>
-          </div>
-
-          <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-700 bg-slate-900 dark:bg-slate-950 transition-colors duration-300">
-            {/* Bookmarks & Favorites Navigation Items */}
-            {!isSearchActive && (
-              <>
-                <button
-                  onClick={handleFavoritesSelect}
-                  className={`w-full text-left px-4 py-3 rounded-lg mb-1 text-sm font-bold transition-all flex items-center gap-2 group
-                    ${currentModuleId === 'favorites' 
-                      ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
-                    }`}
-                >
-                   <svg className="w-4 h-4 text-rose-500 fill-current" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                  <span className="flex-grow">Marked Difficult</span>
-                  {levelFavoritesCount > 0 && (
-                      <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-extrabold shadow-sm">
-                        {levelFavoritesCount}
-                      </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={handleBookmarksSelect}
-                  className={`w-full text-left px-4 py-3 rounded-lg mb-4 text-sm font-bold transition-all flex items-center gap-2 group
-                    ${currentModuleId === 'bookmarks' 
-                      ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
-                    }`}
-                >
-                   <svg className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                  <span className="flex-grow">Saved Questions</span>
-                  {levelBookmarksCount > 0 && (
-                      <span className="text-[10px] bg-yellow-500 text-slate-900 px-2 py-0.5 rounded-full font-extrabold shadow-sm">
-                        {levelBookmarksCount}
-                      </span>
-                  )}
-                </button>
-                <div className="h-px bg-slate-800 mb-4 mx-2"></div>
-              </>
-            )}
-
-            {sidebarModules.length > 0 ? (
-              sidebarModules.map(mod => (
-                <button
-                  key={mod.id}
-                  onClick={() => handleModuleSelect(mod.id)}
-                  className={`w-full text-left px-4 py-3 rounded-lg mb-1 text-sm font-medium transition-all flex items-center justify-between group
-                    ${currentModuleId === mod.id && !isSearchActive
-                      ? 'bg-white/10 text-white border-l-4 border-white' 
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white border-l-4 border-transparent'
-                    }`}
-                >
-                  <span className="truncate mr-2">{mod.title}</span>
-                  <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-slate-500 group-hover:text-white">{mod.questions.length}</span>
-                </button>
-              ))
-            ) : (
-               <div className="text-center py-4 text-slate-500 text-xs">No modules found</div>
-            )}
-          </nav>
-
-          <div className="p-5 bg-slate-800 dark:bg-slate-950 border-t border-slate-700 transition-colors duration-300">
-            <div className="flex justify-between items-end mb-2">
-              <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Progress</div>
-              <div className="text-sm font-mono text-white">{Math.round(progress)}%</div>
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2">
-              <div 
-                className={`bg-${levelData?.color} h-2 rounded-full transition-all duration-500`} 
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 dark:bg-slate-900 w-full transition-colors duration-500 ease-in-out">
-          {/* Mobile Header */}
-          <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-4 md:px-6 flex items-center shadow-sm z-10 flex-shrink-0 transition-colors duration-300">
-            <div className="md:hidden mr-3 flex items-center">
-               <button 
-                 onClick={() => setIsMobileMenuOpen(true)} 
-                 className="text-slate-700 dark:text-slate-200 hover:text-blue-600 transition-colors p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 -ml-2"
-                 aria-label="Open menu"
-               >
-                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-               </button>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                  <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white truncate transition-colors duration-300">
-                  {isSearchActive
-                      ? "Search Results"
-                      : isFavoritesView
-                      ? "Difficult / Important"
-                      : isBookmarksView 
-                          ? "Saved Questions" 
-                          : (activeModule ? activeModule.title : "Select a Module")}
-                  </h2>
-                   {/* Show Level Badge on Mobile Header */}
-                   <span className={`md:hidden px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
-                      {levelData?.title}
-                   </span>
-              </div>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 truncate transition-colors duration-300">
-                 {isSearchActive
-                  ? `Found ${questionsToDisplay.length} matches`
-                  : isFavoritesView
-                    ? "Questions marked as difficult"
-                    : isBookmarksView 
-                      ? "Your bookmarked topics" 
-                      : (activeModule ? activeModule.desc : "Choose a topic from the sidebar")}
-              </p>
-            </div>
-            
-            {/* Desktop Theme Toggle */}
-            <button 
-                onClick={toggleTheme}
-                className="hidden md:flex ml-4 p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-300 hover:scale-105"
-                aria-label="Toggle Theme"
-              >
-                {darkMode ? '☀️' : '🌙'}
-            </button>
-          </header>
-
-          {/* Questions Area */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-10 pb-24 scroll-smooth">
-            {questionsToDisplay.length > 0 ? (
-              <div className="max-w-3xl mx-auto animate-fade-in">
-                {questionsToDisplay.map((item) => (
-                  <div key={item.id}>
-                     {isSearchActive && (item as any).moduleTitle && (
-                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 mt-6 first:mt-0">
-                            From: {(item as any).moduleTitle}
-                         </div>
-                     )}
-                    <QuestionCard
-                      index={item.originalIndex}
-                      data={item.data}
-                      isRead={readQuestions.has(item.id)}
-                      isBookmarked={bookmarks.has(item.id)}
-                      isFavorite={favorites.has(item.id)}
-                      onReveal={() => handleMarkRead(item.id)}
-                      onToggleBookmark={() => toggleBookmark(item.id)}
-                      onToggleFavorite={() => toggleFavorite(item.id)}
-                      levelColor={levelData?.color || 'blue-600'}
-                      searchQuery={searchQuery}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 opacity-60 p-6 text-center transition-colors duration-300">
-                {isSearchActive ? (
-                  <>
-                    <div className="text-5xl md:text-6xl mb-4">🔍</div>
-                    <p className="text-base md:text-lg font-medium">No matches found for "{searchQuery}".<br/>Try a different keyword.</p>
-                  </>
-                ) : isFavoritesView ? (
-                  <>
-                     <div className="text-5xl md:text-6xl mb-4 opacity-50 text-rose-400">❤️</div>
-                     <p className="text-base md:text-lg font-medium">No difficult questions marked.<br/>Click the heart icon to track complex topics.</p>
-                  </>
-                ) : isBookmarksView ? (
-                  <>
-                    <div className="text-5xl md:text-6xl mb-4 opacity-50 text-yellow-400">⭐</div>
-                    <p className="text-base md:text-lg font-medium">No saved questions yet.<br/>Click the star icon on any question to save it.</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-5xl md:text-6xl mb-4">👈</div>
-                    <p className="text-base md:text-lg font-medium">Select a module from the menu<br/>to load questions.</p>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
