@@ -236,11 +236,11 @@ const App: React.FC = () => {
   // --- RENDER: LANDING PAGE ---
   if (!currentLevel) {
     return (
-      <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 overflow-y-auto">
-        <div className="absolute top-4 right-4 z-50">
+      <div className="h-screen w-full bg-slate-50 dark:bg-slate-900 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
+        <div className="fixed top-4 right-4 z-50">
             <button 
               onClick={toggleTheme}
-              className="p-2 rounded-full bg-white dark:bg-slate-800 shadow-md text-slate-600 dark:text-slate-300 hover:scale-110 border border-slate-200 dark:border-slate-700"
+              className="p-2 rounded-full bg-white dark:bg-slate-800 shadow-md text-slate-600 dark:text-slate-300 hover:scale-110 border border-slate-200 dark:border-slate-700 transition-all"
               aria-label="Сменить тему"
             >
               {darkMode ? '☀️' : '🌙'}
