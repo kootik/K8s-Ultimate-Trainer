@@ -28,11 +28,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Раскомментировано для ускорения сборки
+         # cache: 'npm' # Раскомментировано для ускорения сборки
 
       - name: Install dependencies
-        # npm ci быстрее и надежнее для CI (требует package-lock.json)
-        # Если package-lock.json нет в репозитории, замените на 'npm install'
         run: npm install
 
       - name: Build
