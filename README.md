@@ -2,7 +2,11 @@
 <img width="1252" height="676" alt="Image" src="https://github.com/user-attachments/assets/52aeca2f-406c-4b75-9065-f15d88a84290" />
 </div>
 Live demo с аpi ключем google console
-[View your app in AI Studio: ](https://ai.studio/apps/drive/1YG2EFy7tCds_FXH4rFaoD0oiMZ9lGSQ9?fullscreenApplet=true)
+[View your app in AI Studio: ]
+(https://ai.studio/apps/drive/1YG2EFy7tCds_FXH4rFaoD0oiMZ9lGSQ9?fullscreenApplet=true)
+
+Демо https://kootik.github.io/K8s-Ultimate-Trainer//
+без Функционала AI
 
 # ☸️ Kubernetes Ultimate Trainer
 
