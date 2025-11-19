@@ -218,32 +218,34 @@ const App: React.FC = () => {
   // --- RENDER: LANDING PAGE ---
   if (!currentLevel) {
     return (
-      <div className="min-h-screen bg-slate-50 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="text-center mb-16 animate-fade-in">
-            <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-6">
+      <div className="h-screen w-full bg-slate-50 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-16 pb-32">
+          <div className="text-center mb-8 md:mb-16 animate-fade-in">
+            <h1 className="text-3xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-4 md:mb-6">
               Kubernetes <span className="text-blue-600">Ultimate Hub</span>
             </h1>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto font-medium">
+            <p className="text-base md:text-xl text-slate-600 max-w-3xl mx-auto font-medium leading-relaxed">
               AI-Powered Interview Trainer. Master K8s from Core to Kernel.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 max-w-6xl mx-auto">
             {(Object.values(LEVELS) as LevelConfig[]).map((level, idx) => (
               <div 
                 key={level.id}
                 onClick={() => handleLevelSelect(level.id)}
-                className={`bg-white rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group flex flex-col animate-fade-in`}
+                className={`bg-white rounded-xl md:rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group flex flex-col animate-fade-in active:scale-95 md:active:scale-100`}
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
-                <div className="text-6xl mb-6 transform group-hover:scale-110 transition-transform duration-300">{level.icon}</div>
-                <h2 className={`text-2xl font-bold text-slate-800 ${level.textHover} transition-colors`}>{level.title}</h2>
-                <p className={`text-xs font-bold uppercase tracking-wider mb-4 mt-1 text-${level.color}`}>{level.subTitle}</p>
-                <p className="text-slate-600 mb-8 text-sm leading-relaxed flex-grow">
+                <div className="flex items-center justify-between md:block mb-4 md:mb-6">
+                    <div className="text-4xl md:text-6xl transform group-hover:scale-110 transition-transform duration-300">{level.icon}</div>
+                    <h2 className={`text-xl md:text-2xl font-bold text-slate-800 ${level.textHover} transition-colors md:mt-6`}>{level.title}</h2>
+                </div>
+                <p className={`text-xs font-bold uppercase tracking-wider mb-2 md:mb-4 mt-1 text-${level.color}`}>{level.subTitle}</p>
+                <p className="text-slate-600 mb-6 md:mb-8 text-sm leading-relaxed flex-grow">
                   {level.description}
                 </p>
-                <button className={`w-full py-3 rounded-lg font-bold text-sm bg-slate-50 text-slate-700 ${level.bgHover} group-hover:text-white transition-all`}>
+                <button className={`w-full py-3 rounded-lg font-bold text-sm bg-slate-50 text-slate-700 ${level.bgHover} group-hover:text-white transition-all shadow-sm border border-slate-100`}>
                   Start Training
                 </button>
               </div>
@@ -273,13 +275,32 @@ const App: React.FC = () => {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 border-b border-slate-800 bg-slate-900">
-          <button onClick={handleGoHome} className="text-xs text-slate-400 hover:text-white mb-4 flex items-center gap-1 transition-colors uppercase tracking-wider font-bold">
-            ← Change Level
-          </button>
-          <h1 className="text-xl font-bold text-white tracking-tight">K8s Trainer</h1>
-          <span className={`inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
-            {levelData?.title}
-          </span>
+          {/* Sidebar Header with Level Switcher */}
+          <div className="flex items-center justify-between mb-4">
+             <h1 className="text-xl font-bold text-white tracking-tight cursor-pointer" onClick={handleGoHome}>K8s Trainer</h1>
+          </div>
+          
+          {/* Inline Level Switcher */}
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.values(LEVELS) as LevelConfig[]).map((level) => {
+               const isActive = currentLevel === level.id;
+               return (
+                 <button
+                    key={level.id}
+                    onClick={() => handleLevelSelect(level.id)}
+                    className={`
+                      px-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all text-center border
+                      ${isActive 
+                        ? `bg-${level.color} text-white border-${level.color} shadow-md transform scale-105` 
+                        : 'bg-slate-800 text-slate-500 border-slate-700 hover:bg-slate-700 hover:text-slate-300'
+                      }
+                    `}
+                 >
+                    {level.title}
+                 </button>
+               );
+            })}
+          </div>
         </div>
 
         {/* Search Input */}
@@ -395,7 +416,9 @@ const App: React.FC = () => {
              <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-slate-100">
                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
              </button>
-             <button onClick={handleGoHome} className="text-slate-400 text-xs font-bold uppercase tracking-wider hover:text-slate-600 transition-colors">← Levels</button>
+             <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
+                {levelData?.title}
+             </span>
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-slate-800 truncate">
