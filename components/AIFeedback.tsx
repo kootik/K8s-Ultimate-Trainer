@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateAIResponse } from '../services/geminiService';
@@ -93,7 +93,25 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
   const [hint, setHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
 
+  // Editor State
+  const [editedCode, setEditedCode] = useState('');
+
   const selectedPersonaConfig = PERSONAS.find(p => p.id === selectedPersonaId) || PERSONAS[0];
+
+  // Extract code when feedback comes in for explain_code persona
+  useEffect(() => {
+    if (feedback && activePersona === 'explain_code') {
+        // Try to extract code between triple backticks
+        const codeBlockRegex = /```(?:yaml|bash|sh|json|kubectl)?\s*([\s\S]*?)```/;
+        const match = feedback.match(codeBlockRegex);
+        if (match && match[1]) {
+            setEditedCode(match[1].trim());
+        } else {
+            // If no code block is found, just put the whole text
+            setEditedCode(feedback.trim());
+        }
+    }
+  }, [feedback, activePersona]);
 
   const handleAction = async (personaOverride?: AIPersona) => {
     const persona = personaOverride || selectedPersonaId;
@@ -119,6 +137,7 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
     setActivePersona(persona);
     setFeedback(null);
     setHint(null); // Clear previous hint
+    setEditedCode('');
 
     // Logic for Interview Mode State
     if (persona === 'start_interview') {
@@ -151,15 +170,16 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
   };
 
   const handleCopy = () => {
-    if (!feedback) return;
-    navigator.clipboard.writeText(feedback);
+    const textToCopy = activePersona === 'explain_code' ? editedCode : feedback;
+    if (!textToCopy) return;
+    navigator.clipboard.writeText(textToCopy);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const getFeedbackLabel = () => {
     if (isInterviewMode) return 'Interactive Interview';
-    if (activePersona === 'explain_code') return 'Explain with Code';
+    if (activePersona === 'explain_code') return 'Live Code Editor';
     if (activePersona === 'start_interview') return 'Interactive Interview';
     return PERSONAS.find(p => p.id === activePersona)?.label;
   };
@@ -344,24 +364,24 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
 
       {/* Feedback Display Area */}
       {feedback && (
-        <div className="mt-6 p-5 bg-white border border-indigo-100 rounded-lg shadow-sm relative overflow-hidden animate-fade-in group/feedback">
-          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+        <div className={`mt-6 border rounded-lg shadow-sm relative overflow-hidden animate-fade-in group/feedback ${activePersona === 'explain_code' ? 'bg-slate-900 border-slate-700' : 'bg-white border-indigo-100'}`}>
           
-          <div className="flex justify-between items-start mb-4 pb-2 border-b border-slate-100">
-            <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
-              <span>🤖 Ответ AI</span>
-              <span className="text-slate-300">|</span>
-              <span className="text-slate-500">{getFeedbackLabel()}</span>
+          {/* Header */}
+          <div className={`flex justify-between items-center px-4 py-2 border-b ${activePersona === 'explain_code' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-indigo-50 border-indigo-100 text-indigo-900'}`}>
+            <div className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+               {activePersona === 'explain_code' ? '💻 Live Editor' : '🤖 Ответ AI'}
+               <span className="opacity-50">|</span>
+               <span className="opacity-75">{getFeedbackLabel()}</span>
             </div>
             <div className="flex items-center gap-1">
               <button 
                 onClick={handleCopy}
-                className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 rounded-md hover:bg-indigo-50 flex items-center gap-1.5 text-xs font-medium"
+                className={`transition-colors p-1.5 rounded-md flex items-center gap-1.5 text-xs font-medium ${activePersona === 'explain_code' ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-indigo-100 text-slate-500 hover:text-indigo-700'}`}
               >
                 {isCopied ? (
                    <>
                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                     <span className="text-green-600">Скопировано</span>
+                     <span className="text-green-500">Скопировано</span>
                    </>
                 ) : (
                    <>
@@ -373,11 +393,28 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
             </div>
           </div>
 
-          <div className="prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-rose-600 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:border-collapse prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2 prose-td:border prose-td:border-slate-300 prose-td:p-2">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {feedback || ''}
-            </ReactMarkdown>
-          </div>
+          {/* Content Body */}
+          {activePersona === 'explain_code' ? (
+              // Live Code Editor View
+              <div className="relative">
+                  <textarea
+                    value={editedCode}
+                    onChange={(e) => setEditedCode(e.target.value)}
+                    className="w-full h-96 bg-slate-900 text-blue-300 font-mono text-sm p-4 focus:outline-none focus:ring-0 resize-y leading-relaxed"
+                    spellCheck={false}
+                  />
+                  <div className="absolute bottom-2 right-4 text-[10px] text-slate-600 pointer-events-none">
+                      YAML / Bash / JSON
+                  </div>
+              </div>
+          ) : (
+              // Standard Markdown View
+              <div className="p-5 prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-violet-700 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:border-collapse prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2 prose-td:border prose-td:border-slate-300 prose-td:p-2">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {feedback || ''}
+                </ReactMarkdown>
+              </div>
+          )}
         </div>
       )}
     </div>

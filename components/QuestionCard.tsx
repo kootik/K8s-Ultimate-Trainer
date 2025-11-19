@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Question } from '../types';
 import AIFeedback from './AIFeedback';
 
@@ -46,6 +47,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     onReveal();
   };
 
+  // Robust timer cleanup using useEffect
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    if (isAnswerCopied) {
+      timeoutId = setTimeout(() => {
+        setIsAnswerCopied(false);
+      }, 2000);
+    }
+    return () => clearTimeout(timeoutId);
+  }, [isAnswerCopied]);
+
   const handleCopyAnswer = (e: React.MouseEvent) => {
     e.stopPropagation();
     // Create a temporary element to extract text from HTML
@@ -57,7 +69,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     
     navigator.clipboard.writeText(textToCopy);
     setIsAnswerCopied(true);
-    setTimeout(() => setIsAnswerCopied(false), 2000);
   };
 
   // Highlight Logic for Plain Text (Question & Tip)
@@ -231,7 +242,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
             {/* Answer Content HTML */}
             <div 
-              className="prose prose-slate prose-sm max-w-none [&_code]:bg-slate-100 [&_code]:text-rose-600 [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_h4]:font-bold [&_h4]:text-slate-900"
+              className="prose prose-slate prose-sm max-w-none [&_code]:bg-slate-100 [&_code]:text-violet-700 [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_h4]:font-bold [&_h4]:text-slate-900"
               dangerouslySetInnerHTML={{ __html: processedAnswerHtml }} 
             />
 
