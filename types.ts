@@ -1,3 +1,4 @@
+
 export type LevelType = 'junior' | 'middle' | 'senior';
 
 export interface Question {
@@ -29,13 +30,16 @@ export interface LevelConfig {
 export type AIPersona = 
   | 'interviewer_strict' 
   | 'interviewer_friendly' 
+  | 'interviewer_continuous'
   | 'teacher_eli5' 
   | 'architect_deep' 
   | 'devil_advocate'
   | 'analyst_compare'
   | 'troubleshooter_debug'
   | 'security_auditor'
-  | 'explain_code';
+  | 'explain_code'
+  | 'start_interview'
+  | 'hint_giver';
 
 export interface AIMessage {
   role: 'user' | 'model';

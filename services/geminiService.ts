@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { AIPersona } from '../types';
 
@@ -36,6 +37,28 @@ const PERSONA_PROMPTS: Record<AIPersona, (q: string) => string> = {
     4. **Soft Skills:** How would you explain this concept to a non-technical Product Manager?
     
     **Tone:** Warm, encouraging, using emojis, constructive.
+  `,
+
+  interviewer_continuous: (q) => `
+    You are an **Expert Technical Interviewer** conducting a real-time, continuous dialogue.
+    
+    Topic: "${q}"
+    
+    **Instructions:**
+    1. **Feedback:** Provide short, constructive feedback on the user's specific answer to your previous question. (Was it right? Wrong? Partially correct?).
+    2. **The Pivot:** Immediately transition to the **NEXT** question.
+       - Do NOT give a final "Hiring Verdict" or "Score" yet.
+       - Keep the flow going.
+       - If the user answered well, increase difficulty (ask about internals, scale, failure modes).
+       - If the user struggled, pivot to a related easier concept or ask them to clarify.
+    3. **Goal:** Simulate a real, back-and-forth engineering discussion where one answer leads to the next question.
+    
+    **Format:**
+    **Feedback:** [Your short assessment]
+    
+    **Next Question:** [Your new follow-up question]
+    
+    **Tone:** Professional, engaging, demanding but fair.
   `,
 
   teacher_eli5: (q) => `
@@ -128,11 +151,41 @@ const PERSONA_PROMPTS: Record<AIPersona, (q: string) => string> = {
     
     **Instructions:**
     1. **Direct Output:** Provide the **YAML manifest** or **kubectl command** for this concept immediately.
-    2. **No Theory:** Do not explain "what" it is. Only show "how" to implement it.
+    2. **No Theory:** Do not explain the "what". Only show "how" to implement it.
     3. **Best Practice:** Use standard production-ready configurations.
     4. **Comments:** Add brief comments inside the code block explaining key flags/fields.
     
     **Tone:** Minimalist, code-centric.
+  `,
+
+  start_interview: (q) => `
+    You are a **Hiring Manager** starting a live technical interview round.
+    
+    Topic: "${q}"
+    
+    **Instructions:**
+    1. **Action:** Ask a specific, short follow-up question based on the topic provided. 
+    2. **Context:** Imagine the candidate just mentioned this topic, and you are digging deeper.
+    3. **Goal:** The user will answer this question in the next turn.
+    4. **Constraint:** Do NOT explain the topic. Do NOT provide the answer. ONLY ask the question.
+    
+    **Tone:** Professional, challenging, direct.
+  `,
+
+  hint_giver: (q) => `
+    **TASK:** Provide a hint for the interview question.
+    
+    **INPUT DATA:**
+    The text under "User Answer/Input" below is NOT the user's answer. It is the **Interviewer's last message** containing the question the user is stuck on.
+    
+    **INSTRUCTIONS:**
+    1. Read the "User Answer/Input" text.
+    2. Find the question asked within it.
+    3. Provide the **correct answer** to that question.
+    4. Keep it concise (2-3 sentences max) and helpful.
+    
+    **Tone:** Secretive, helpful, direct.
+    **Language:** Russian.
   `
 };
 
@@ -140,7 +193,8 @@ export const generateAIResponse = async (
   persona: AIPersona,
   question: string,
   canonicalAnswer: string,
-  userAnswer: string
+  userAnswer: string,
+  historyContext?: string
 ): Promise<string> => {
   if (!apiKey) {
     return "⚠️ API Key is missing. Please configure process.env.API_KEY.";
@@ -157,9 +211,19 @@ export const generateAIResponse = async (
     --- CONTEXT ---
     Question: ${question}
     Canonical Answer (Hidden from user): ${canonicalAnswer}
+    ${historyContext ? `
+    --- PREVIOUS TURN CONTEXT ---
+    You previously asked the user a follow-up question (found in the text below).
+    The "User Answer" provided below is their response to THAT specific question.
+    Evaluate their answer in the context of your previous question.
+    
+    Your previous output:
+    ${historyContext}
+    ` : ''}
     User Answer/Input: ${userAnswer || "(User requested explanation without input)"}
     
     --- TASK ---
+    ${historyContext ? "**IMPORTANT: The user is answering your follow-up question from the history above. Focus your evaluation on their answer to THAT question.**" : ""}
     ${systemInstruction}
     
     --- FORMATTING ---
