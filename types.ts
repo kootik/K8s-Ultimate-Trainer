@@ -32,6 +32,7 @@ export type AIPersona =
   | 'teacher_eli5' 
   | 'architect_deep' 
   | 'devil_advocate'
+  | 'analyst_compare'
   | 'troubleshooter_debug'
   | 'security_auditor';
 

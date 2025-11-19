@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { generateAIResponse } from '../services/geminiService';
 import { AIPersona } from '../types';
 
@@ -173,9 +174,11 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
             </div>
           </div>
 
-          <ReactMarkdown className="prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-rose-600 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
-            {feedback || ''}
-          </ReactMarkdown>
+          <div className="prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-rose-600 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:border-collapse prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2 prose-td:border prose-td:border-slate-300 prose-td:p-2">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {feedback || ''}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
