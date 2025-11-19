@@ -560,156 +560,142 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
 
 const SENIOR_MODULES = [
   {
-    id: 's1', title: '1. Внутренности Архитектуры', desc: 'Architect Level',
-    questions: [
+    "id": "s1",
+    "title": "1. Внутренности Архитектуры",
+    "desc": "Architect Level: Informers, Leader Election, APF",
+    "questions": [
       {
-        q: "Что такое Informer и Reflector в client-go и зачем они нужны?",
-        a: `<p>Это ключевой паттерн оптимизации работы контроллеров.</p>
-            <p>Если бы каждый контроллер постоянно опрашивал API (Polling), API сервер бы упал.</p>
-            <ul>
-                <li><strong>Reflector:</strong> Выполняет <code>List</code> и затем длинный <code>Watch</code> запрос к API серверу, получая поток изменений. Объекты кладутся в очередь <code>DeltaFIFO</code>.</li>
-                <li><strong>Informer:</strong> Забирает объекты из очереди и обновляет <strong>локальный кэш</strong> (Store/Indexer).</li>
-            </ul>
-            <p>Логика контроллера (Reconcile loop) читает данные из локального кэша (мгновенно), а не из API. Это снижает нагрузку на порядки.</p>`,
-        tip: "Упомяните 'SharedInformerFactory' — это механизм, позволяющий сотням контроллеров использовать один и тот же кэш и connection, экономя RAM."
-      },
+        "q": "Что такое Informer и Reflector в client-go и зачем они нужны? Опиши внутренний цикл.",
+        "a": `<p>Это паттерн оптимизации, предотвращающий падение API-сервера от поллинга. Стандартная цепочка реализации контроллера выглядит так:</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Reflector:</strong> Выполняет первичный <code>List</code> и затем поддерживает длинное соединение <code>Watch</code>, получая поток событий. Полученные объекты помещаются в очередь <strong>DeltaFIFO</strong>, которая дедуплицирует и сжимает события (если объект изменился 5 раз, останется только актуальное состояние).</li>
+                  <li><strong>Informer:</strong> Забирает объекты из DeltaFIFO и обновляет <strong>локальный кэш</strong> (Indexer/ThreadSafeStore). Только после обновления кэша вызываются Event Handlers (OnAdd, OnUpdate) вашей бизнес-логики.</li>
+              </ul>
+              <p><strong>Результат:</strong> Reconcile loop читает данные из локальной памяти мгновенно, не нагружая сеть и etcd.</p>`,
+        "tip": "Упомяните 'SharedInformerFactory'. Этот механизм позволяет сотням контроллеров (внутри одного бинарника) использовать один и тот же Reflector/Connection и общий кэш, экономя гигабайты RAM."
+  },
       {
-        q: "Как работает Leader Election в Control Plane компонентах?",
-        a: `<p>В HA кластере запущено 3 реплики Controller Manager и Scheduler, но работать должна <strong>только одна</strong> (чтобы не дублировать действия).</p>
-            <p>Механизм:</p>
+        "q": "Как работает Leader Election в Control Plane компонентах?",
+        "a": `<p>Для обеспечения HA (High Availability) запускается несколько реплик Scheduler или Controller Manager, но активной должна быть только одна.</p>
+              <h4 class="font-bold mt-2">Алгоритм Optimistic Locking:</h4>
             <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li>Используется объект <code>Lease</code> (или Endpoint) в неймспейсе <code>kube-system</code>.</li>
-                <li>Все реплики пытаются обновить этот объект, записывая туда свое имя и timestamp.</li>
-                <li>Кто успел записать — тот Лидер. Он обновляет timestamp каждые N секунд.</li>
-                <li>Остальные (Standby) следят за Lease. Если timestamp не обновлялся долго — они пытаются захватить лидерство.</li>
+                  <li>Используется объект <code>Lease</code> в Kubernetes (обычно в <code>kube-system</code>).</li>
+                  <li>Кандидаты пытаются отправить PUT-запрос, обновляя поле <code>holderIdentity</code> и время.</li>
+                  <li><strong>CAS (Compare-And-Swap):</strong> API-сервер проверяет <code>resourceVersion</code>. Если версия в базе совпадает с тем, что прислал кандидат — запись обновляется, кандидат становится лидером.</li>
+                  <li>Если другой кандидат успел раньше, версия изменилась, и API вернет 409 Conflict. Проигравший переходит в режим ожидания.</li>
             </ol>`,
-        tip: "Это паттерн 'Optimistic Locking'. Важно: часы (clock) на нодах должны быть синхронизированы, иначе возможны проблемы с захватом лидерства."
+        "tip": "В отличие от Zookeeper/Etcd lock, здесь не нужны тяжелые сессии. Используются нативные примитивы версионирования K8s ресурсов."
       },
       {
-        q: "Как работает API Priority and Fairness (APF)?",
-        a: `<p>Это механизм защиты Control Plane от перегрузки (DDoS от собственных сломанных контроллеров).</p>
-            <p>Запросы классифицируются по <code>FlowSchema</code> (кто пришел? системный юзер, лидер, обычный под?) и направляются в <code>PriorityLevelConfiguration</code>.</p>
-            <p>У каждого уровня приоритета есть очереди. Если очередь переполнена, запросы отклоняются с 429 Too Many Requests. Это предотвращает ситуацию, когда один сломанный оператор "забивает" API сервер и не дает Kubelet'ам обновлять статусы нод.</p>`,
-        tip: "Если вы видите 429 ошибки в логах контроллеров, не спешите добавлять CPU API серверу. Сначала проверьте метрики APF и возможно увеличьте очереди для нужной FlowSchema."
+        "q": "Как работает API Priority and Fairness (APF)?",
+        "a": `<p>APF защищает Control Plane от перегрузки (например, DDoS от собственных сломанных контроллеров).</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>FlowSchema:</strong> Классифицирует входящие запросы (кто пришел? system:nodes, admin или service-account?).</li>
+                  <li><strong>PriorityLevelConfiguration:</strong> Направляет запрос в соответствующую очередь. Каждый уровень имеет свой <strong>Concurrency Limit</strong> (лимит одновременно выполняемых запросов).</li>
+                  <li><strong>Isolation:</strong> Используется техника <em>Shuffle Sharding</em>, чтобы "шумный сосед" (один нагруженный тенант) не забил всю очередь, и запросы других тенантов того же приоритета проходили.</li>
+              </ul>`,
+        "tip": "Если вы видите ошибки 429 Too Many Requests в логах контроллеров, не спешите добавлять CPU API-серверу. Проверьте метрики APF — возможно, нужно расширить очереди для конкретной FlowSchema."
       }
     ]
   },
   {
-    id: 's2', title: '2. Ядро Linux и Ресурсы', desc: 'Cgroups, OOM',
-    questions: [
+    "id": "s2",
+    "title": "2. Ядро Linux и Ресурсы",
+    "desc": "Cgroups, OOM Score Math, CPU Manager",
+    "questions": [
       {
-        q: "Как CPU Requests и Limits реализованы в ядре Linux?",
-        a: `<p>Kubernetes транслирует спецификацию пода в настройки <strong>Cgroups</strong>.</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Requests -> cpu.shares:</strong> Это "мягкий" вес. Работает <em>только</em> при конкуренции за процессор. Если нода свободна, под с малым реквестом может занять хоть 100% CPU.</li>
-                <li><strong>Limits -> cpu.cfs_quota_us:</strong> Это "жесткий" лимит времени планировщика (CFS). Если процесс исчерпал свою квоту (например, 100мс процессорного времени), ядро <strong>принудительно убирает</strong> его с CPU (Throttling) до следующего периода. Это вызывает задержки (latency), даже если CPU на ноде простаивает.</li>
-            </ul>`,
-        tip: "Для latency-sensitive приложений (базы данных, Java) часто рекомендуют не ставить CPU Limits, чтобы избежать троттлинга."
+        "q": "Как CPU Requests и Limits реализованы в ядре Linux? В чем опасность Limits?",
+        "a": `<p>Kubernetes транслирует ресурсы в настройки <strong>Cgroups</strong>:</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Requests (cpu.shares):</strong> Это "мягкий" вес. Он гарантирует долю процессора <em>только</em> в моменты 100% загрузки ноды. Если нода свободна, контейнер может использовать все свободные циклы выше реквеста.</li>
+                  <li><strong>Limits (cpu.cfs_quota_us):</strong> "Жесткий" лимит планировщика CFS. Задает квоту времени (обычно на период 100мс). Если процесс исчерпал квоту, ядро <strong>принудительно приостанавливает</strong> (Throttling) его до следующего периода. Это вызывает latency даже на простаивающем сервере.</li>
+              </ul>`,
+        "tip": "Для latency-sensitive приложений (Java, DB) часто рекомендуют не ставить CPU Limits (или ставить с большим запасом), оставляя только Requests, чтобы избежать троттлинга CFS."
       },
       {
-        q: "Как OOM Killer выбирает жертву? (OOM Score)",
-        a: `<p>Когда память кончается, ядро Linux убивает процессы. Выбор жертвы зависит от <code>oom_score</code>.</p>
-            <p>Kubelet манипулирует этим счетом через <code>oom_score_adj</code> в зависимости от QoS класса пода:</p>
-            <ul>
-                <li><strong>Guaranteed (Req == Lim):</strong> -998. (Почти бессмертны, убиваются последними).</li>
-                <li><strong>BestEffort (No limits):</strong> +1000. (Первые кандидаты на вылет).</li>
-                <li><strong>Burstable:</strong> Значение рассчитывается динамически.</li>
-            </ul>`,
-        tip: "Не путайте Node OOM (когда ядро убивает процесс) и Eviction (когда Kubelet мягко изгоняет поды при нехватке ресурсов). Kubelet пытается сработать раньше ядра."
+        "q": "Как OOM Killer выбирает жертву? (Математика OOM Score)",
+        "a": `<p>Ядро убивает процессы с высоким <code>oom_score</code>. Kubelet манипулирует этим через <code>oom_score_adj</code> (-1000 до +1000):</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Guaranteed:</strong> Значение <strong>-998</strong>. Убиваются последними (после системных процессов).</li>
+                  <li><strong>BestEffort:</strong> Значение <strong>1000</strong>. Первые кандидаты на смерть.</li>
+                  <li><strong>Burstable:</strong> Рассчитывается динамически по формуле:
+                      $$score = 1000 - \left( \frac{1000 \times memoryRequest}{machineCapacity} \right)$$
+                      Чем большую часть памяти ноды вы гарантированно зарезервировали (Request), тем ниже (безопаснее) ваш score.</li>
+              </ul>`,
+        "tip": "Важно отличать Node OOM (убивает ядро) от Eviction (Kubelet мягко изгоняет поды). Kubelet пытается сработать раньше ядра, чтобы сохранить стабильность системы."
       },
       {
-        q: "Что такое 'Static' CPU Manager Policy в Kubelet?",
-        a: `<p>По умолчанию Kubelet использует CFS Quota, и потоки приложения прыгают по всем ядрам CPU (Context switching). Это снижает производительность для High Performance задач.</p>
-            <p>Политика <strong>Static</strong> позволяет выделить поду (класса Guaranteed с целым числом CPU) <strong>эксклюзивные физические ядра</strong>. Kubelet меняет cpuset cgroup, изолируя ядра только для этого пода. Никто другой (даже системные процессы) не смогут их использовать.</p>`,
-        tip: "Требует аккуратной настройки флага `--kubelet-reserved-cpus`, чтобы не отобрать все ядра у системы и Kubelet'а, иначе нода станет 'NotReady'."
+        "q": "Что такое 'Static' CPU Manager Policy и зачем она нужна?",
+        "a": `<p>По умолчанию процессы прыгают по всем ядрам CPU, вызывая переключение контекста и очистку кэша процессора (Cache Misses).</p>
+              <p>Политика <strong>Static</strong> позволяет выделить поду <strong>эксклюзивные физические ядра</strong>.</p>
+              <p><strong>Требования:</strong></p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li>Под должен быть в классе QoS <strong>Guaranteed</strong>.</li>
+                  <li>Запрос CPU должен быть <strong>целым числом</strong> (например, <code>cpu: 2</code>, а не <code>2.5</code>).</li>
+              </ul>
+              <p>В этом случае Kubelet изменяет <code>cpuset</code> cgroup, физически изолируя ядра под этот контейнер.</p>`,
+        "tip": "Критично для High-Performance Computing (HPC) и приложений реального времени (Telco), где важна локальность L1/L2 кэша."
       }
     ]
   },
   {
-    id: 's3', title: '3. Безопасность и CNI Advanced', desc: 'Exec, CNI, Security',
-    questions: [
+    "id": "s3",
+    "title": "3. Безопасность и CNI Advanced",
+    "desc": "Exec Protocol, CNI Chaining, PSA, OIDC",
+    "questions": [
       {
-        q: "Как технически работает `kubectl exec`? Опиши поток.",
-        a: `<p>Это не SSH. Это цепочка соединений с Upgrade протокола.</p>
-            <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
-Client (kubectl) -> API Server (HTTP POST /exec -> Upgrade: SPDY/HTTP2)
-API Server (Proxy) -> Kubelet (на ноде)
-Kubelet -> CRI (Container Runtime) (gRPC Exec)
-CRI -> Container Namespace (Stream stdin/stdout)
-            </div>
-            <p>API Server выступает в роли прокси. Данные передаются через стримы WebSocket или SPDY. Поэтому стабильность exec зависит от доступности API сервера.</p>`,
-        tip: "Если `kubectl exec` висит, проверьте связность между API Server и Kubelet (порт 10250) и что сеть внутри кластера жива."
+        "q": "Как технически работает `kubectl exec`? Эволюция протоколов.",
+        "a": `<p>Это не SSH, а цепочка соединений, где API Server выступает прокси.</p>
+              <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
+Kubectl -> API Server -> Kubelet -> CRI -> Container Namespace
+              </div>
+              <p><strong>Протоколы:</strong></p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Исторически:</strong> Использовался SPDY (устаревший стандарт Google, предок HTTP/2).</li>
+                  <li><strong>Современность (v1.30+):</strong> Kubernetes перешел на стандартные <strong>WebSockets</strong>. Клиент отправляет заголовок <code>Upgrade: websocket</code>. Это решает проблемы совместимости с корпоративными прокси, которые часто блокировали SPDY.</li>
+              </ul>`,
+        "tip": "Если `kubectl exec` зависает или обрывается, проверьте настройки вашего Ingress/LoadBalancer — поддерживают ли они WebSocket Upgrade и длинные тайм-ауты соединения."
       },
       {
-        q: "Что такое CNI Chaining?",
-        a: `<p>Спецификация CNI позволяет запускать несколько плагинов последовательно для одного сетевого интерфейса.</p>
-            <p>Пример популярной цепочки:
-            <br>1. <strong>Base CNI (Calico/AWS VPC):</strong> Создает интерфейс, назначает IP, настраивает роутинг.
-            <br>2. <strong>Portmap:</strong> Настраивает iptables правила для реализации <code>hostPort</code>.
-            <br>3. <strong>Istio CNI:</strong> Настраивает iptables внутри неймспейса пода для прозрачного перехвата трафика в Envoy sidecar.</p>`,
-        tip: "Это частый паттерн в облаках. Например, AWS EKS CNI использует chaining для реализации Security Groups for Pods."
+        "q": "Что такое CNI Chaining?",
+        "a": `<p>Спецификация CNI позволяет комбинировать несколько плагинов в цепочку для одного интерфейса. Конфигурация <code>.conflist</code> выполняется последовательно:</p>
+              <ol class="list-decimal pl-5 mt-2 space-y-1">
+                  <li><strong>Base Plugin (AWS VPC / Calico):</strong> Создает veth-пару, назначает IP, настраивает роутинг.</li>
+                  <li><strong>Meta Plugin (Portmap):</strong> Настраивает iptables правила для реализации <code>hostPort</code>.</li>
+                  <li><strong>Tuning Plugin:</strong> Применяет sysctl параметры к интерфейсу.</li>
+              </ol>
+              <p>Результат работы одного плагина передается на вход следующему.</p>`,
+        "tip": "Это частый паттерн. Например, Istio CNI встраивается в эту цепочку, чтобы настроить перехват трафика без использования init-контейнеров с привилегиями `NET_ADMIN`."
       },
       {
-        q: "Проблема ndots:5 и DNS",
-        a: `<p>По умолчанию в <code>/etc/resolv.conf</code> пода стоит <code>ndots:5</code>. Это заставляет резолвер считать любой домен с < 5 точками "неполным" и перебирать суффиксы (search domains: <code>svc.cluster.local</code>, <code>namespace...</code>).</p>
-            <p><strong>Проблема:</strong> Если вы резолвите <code>google.com</code> (1 точка), K8s сначала попробует:
-            1. <code>google.com.namespace.svc.cluster.local</code> (NXDOMAIN)
-            2. <code>google.com.svc.cluster.local</code> (NXDOMAIN)
-            ...и так далее.</p>
-            <p>Это утраивает нагрузку на DNS сервер. Решение: использовать FQDN (с точкой в конце: <code>google.com.</code>) или менять <code>dnsConfig</code> в поде.</p>`,
-        tip: "Если приложение медленно открывает внешние соединения, добавьте точку в конце хоста (`google.com.`) — это мгновенно уберет лишние DNS запросы."
+        "q": "В чем заключается проблема ndots:5 в DNS?",
+        "a": `<p>По умолчанию <code>/etc/resolv.conf</code> в поде содержит <code>ndots:5</code>. Это означает, что любой домен с менее чем 5 точками считается "неполным".</p>
+              <p><strong>Сценарий:</strong> Приложение резолвит <code>google.com</code> (1 точка).</p>
+              <p><strong>Поведение:</strong> Резолвер сначала подставляет все search-домены:</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><code>google.com.my-ns.svc.cluster.local</code> (NXDOMAIN)</li>
+                  <li><code>google.com.svc.cluster.local</code> (NXDOMAIN)</li>
+                  <li>...и так далее.</li>
+              </ul>
+              <p>Только в конце делается запрос к абсолютному имени. Это генерирует паразитный трафик на CoreDNS.</p>`,
+        "tip": "Решение: используйте FQDN (с точкой в конце: <code>google.com.</code>) в коде приложения или настройте <code>dnsConfig</code> в спецификации Пода."
       },
       {
-        q: "Explain the concept and functionality of Pod Security Admission (PSA)",
-        a: `<p><strong>Pod Security Admission (PSA)</strong> — это встроенный Admission Controller, который реализует стандарты <strong>Pod Security Standards (PSS)</strong>.</p>
-            <p>Он пришел на замену <strong>PodSecurityPolicy (PSP)</strong>.</p>
-            <h4 class="font-bold mt-2">Как работает PSA:</h4>
-            <p>PSA управляется через <strong>Labels на Namespace</strong>. Никаких CRD.</p>
-            <h4 class="font-bold mt-2">Уровни (Profiles):</h4>
-            <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Privileged:</strong> Разрешено всё.</li>
-                <li><strong>Baseline:</strong> Минимум ограничений.</li>
-                <li><strong>Restricted:</strong> Максимальная защита (Best Practices).</li>
-            </ul>`,
-        tip: "PSA — это 'Batteries included' решение. Для сложной логики (например, разрешить image только из определенного registry) всё ещё нужен OPA Gatekeeper или Kyverno."
+        "q": "Pod Security Admission (PSA) vs PSP: Как это работает?",
+        "a": `<p>PSA — это встроенный контроллер, заменивший сложный PodSecurityPolicy. Он управляется исключительно через <strong>Labels на Namespace</strong>.</p>
+              <h4 class="font-bold mt-2">Три стандарта (Profiles):</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Privileged:</strong> Полный доступ (для системных агентов, CSI).</li>
+                  <li><strong>Baseline:</strong> Запрещает привилегированные контейнеры и хостовые порты/сети.</li>
+                  <li><strong>Restricted:</strong> Самый строгий. Требует сброса всех Linux Capabilities, явной настройки Seccomp и запуска не от root (RunAsNonRoot).</li>
+              </ul>`,
+        "tip": "PSA — это простое 'коробочное' решение. Если вам нужна сложная логика (например, разрешить образы только из корпоративного реестра), вам все равно понадобится OPA Gatekeeper или Kyverno."
       },
       {
-        q: "OIDC Authentication flow",
-        a: `<p>API Server <strong>не хранит</strong> пользователей. Он доверяет токенам (JWT ID Token), подписанным внешним провайдером.</p>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li>Пользователь логинится в Keycloak/Google, получает <code>id_token</code>.</li>
-                <li><code>kubectl</code> отправляет этот токен в заголовке <code>Authorization: Bearer ...</code>.</li>
-                <li>API Server проверяет цифровую подпись токена.</li>
-                <li>Если подпись верна, он извлекает <code>email</code>/<code>groups</code> и использует их для RBAC.</li>
-            </ol>`,
-        tip: "Важный нюанс: K8s не умеет 'отзывать' токены. Если вы уволили сотрудника, его токен будет работать до истечения срока действия (TTL), если не использовать короткоживущие токены (refresh flow)."
-      },
-      {
-        q: "CSR API и Kubelet Bootstrapping",
-        a: `<p>Когда новая нода добавляется в кластер, у неё нет сертификатов. Она не может просто сгенерировать их сама.</p>
-            <p>Kubelet использует начальный токен (bootstrap token), чтобы отправить запрос <strong>CSR</strong> в API Server.</p>
-            <p>Контроллер <code>csrapproving</code> проверяет токен и автоматически одобряет (Approve) запрос, выдавая Kubelet'у полноценный клиентский сертификат.</p>`,
-        tip: "Никогда не включайте автоматическое утверждение (auto-approval) для всех CSR подряд в продакшене. Это позволяет любой машине в сети притвориться нодой кластера."
-      },
-      {
-        q: "Компоненты CSI драйвера",
-        a: `<p>CSI драйвер обычно состоит из пода на каждой ноде (Node Driver) и центрального контроллера (Controller Driver).</p>
-            <p>K8s предоставляет готовые <strong>Sidecar контейнеры</strong>:</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>external-provisioner:</strong> Следит за PVC, вызывает <code>CreateVolume</code>.</li>
-                <li><strong>external-attacher:</strong> Следит за VolumeAttachment, вызывает <code>ControllerPublishVolume</code>.</li>
-                <li><strong>node-driver-registrar:</strong> Регистрирует драйвер в Kubelet.</li>
-            </ul>`,
-        tip: "Важно понимать, что операции Provisioning/Attaching делает центральный контроллер, а Mounting/Formatting — демон на ноде."
-      },
-      {
-        q: "Volume Expansion Flow",
-        a: `<p>Процесс двухэтапный:</p>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li><strong>Control Plane Expansion:</strong> <code>external-resizer</code> вызывает API облака, чтобы увеличить размер диска.</li>
-                <li><strong>File System Expansion:</strong> Kubelet на ноде обнаруживает изменение и вызывает <code>NodeExpandVolume</code> (resize2fs/xfs_growfs).</li>
-            </ol>`,
-        tip: "Помните, что уменьшить диск (Shrink) в Kubernetes нельзя. Также для расширения файловой системы под часто должен быть запущен (для онлайн ресайза)."
+        "q": "Особенности OIDC аутентификации (Revocation Problem)",
+        "a": `<p>API Server проверяет ID Token (JWT) как <strong>Stateless</strong> сервис. Он проверяет цифровую подпись и срок действия (exp), но <strong>не обращается</strong> к провайдеру (Google/Okta) при каждом запросе.</p>
+              <p><strong>Проблема отзыва:</strong> Если сотрудника уволили и заблокировали в Okta, его токен продолжает работать в K8s до истечения времени жизни (обычно 1 час). Моментальный отзыв на уровне API-сервера невозможен.</p>`,
+        "tip": "Для минимизации рисков используйте короткоживущие токены (Short TTL) в сочетании с механизмом Refresh Tokens на стороне клиента (kubelogin)."
       }
     ]
   },
@@ -867,82 +853,77 @@ spec:
     ]
   },
   {
-    id: 's8', title: '8. CI/CD & Supply Chain Security', desc: 'Tekton, ArgoCD Image Updater, Cosign, SBOM',
-    questions: [
+    "id": "s8",
+    "title": "8. CI/CD & Supply Chain Security",
+    "desc": "Tekton, ArgoCD Image Updater, Cosign",
+    "questions": [
       {
-        q: "В чем архитектурное преимущество Tekton перед Jenkins в среде Kubernetes?",
-        a: `<p>Tekton — это <strong>Kubernetes-native</strong> фреймворк, в то время как Jenkins — это традиционный сервер.</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Serverless:</strong> У Tekton нет постоянно запущенного «мастера». Каждый шаг пайплайна запускается как отдельный Pod (Container) по требованию и умирает после выполнения. Это экономит ресурсы.</li>
-                <li><strong>Decoupling:</strong> Логика описана через CRD (Custom Resource Definitions): <code>Task</code>, <code>Pipeline</code>, <code>PipelineRun</code>. Это позволяет переиспользовать Таски между разными пайплайнами.</li>
-                <li><strong>Isolation:</strong> Каждый шаг выполняется в изолированном контейнере, что решает проблему «Dependency Hell» (конфликтов плагинов и версий библиотек), свойственную Jenkins.</li>
-            </ul>`,
-        tip: "Jenkins хорош для легаси и VM. Tekton идеален, если вы хотите строить пайплайны как код (YAML) и управлять ими через GitOps (ArgoCD может деплоить Tekton Pipelines)."
+        "q": "В чем архитектурное отличие Tekton от Jenkins? (Serverless vs Monolith)",
+        "a": `<p>Tekton — это Kubernetes-native фреймворк, меняющий парадигму исполнения.</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Jenkins (Monolith):</strong> Зависит от Master-узла, который хранит состояние и оркестрирует агентов. Мастер — узкое место и единая точка отказа.</li>
+                  <li><strong>Tekton (Serverless):</strong> Состояние пайплайна хранится в <strong>etcd</strong> через CRD (TaskRun, PipelineRun). Нет "мастера".</li>
+                  <li><strong>Pod-per-Task:</strong> Каждый шаг пайплайна запускается как отдельный Pod (контейнер). Это обеспечивает полную изоляцию зависимостей (нет конфликтов плагинов) и честное выделение ресурсов планировщиком K8s.</li>
+              </ul>`,
+        "tip": "Tekton сложнее в освоении (много YAML), но он идеально ложится в GitOps подход и масштабируется линейно с размером кластера."
       },
       {
-        q: "Как автоматизировать обновление тега образа в GitOps (ArgoCD) после CI-сборки?",
-        a: `<p>В чистом GitOps CI-система не должна иметь доступ к кластеру (kubectl apply). Она должна только пушить Docker-образ и обновлять Git-репозиторий.</p>
-            <h4 class="font-bold mt-2">Паттерн с ArgoCD Image Updater:</h4>
-            <ol class="list-decimal pl-5 mt-2 space-y-1">
-                <li><strong>CI (GitHub Actions):</strong> Собирает приложение, тегирует его (например, <code>sha-123</code>) и пушит в Registry.</li>
-                <li><strong>Registry:</strong> Появляется новый тег.</li>
-                <li><strong>ArgoCD Image Updater:</strong> Сканирует Registry, видит новый тег (по стратегии, например, <em>Newest Build</em>), делает <code>git commit</code> в репозиторий с манифестами (обновляет <code>values.yaml</code> или Kustomize image tag).</li>
-                <li><strong>ArgoCD:</strong> Видит изменение в Git и синхронизирует кластер.</li>
-            </ol>`,
-        tip: "Избегайте использования тега <code>latest</code> в продакшене. ArgoCD не увидит изменений, если хеш образа изменился, а тег остался тем же (без настройки `imagePullPolicy: Always` и рестарта подов). Используйте SHA-теги или семантическое версионирование."
+        "q": "Как работает ArgoCD Image Updater? Стратегии обновления.",
+        "a": `<p>Updater автоматизирует "Write-Back" фазу GitOps — запись новой версии образа обратно в конфигурацию.</p>
+              <h4 class="font-bold mt-2">Ключевые стратегии:</h4>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Write-Back Method:</strong> Предпочтителен метод <strong>Git</strong> (создает коммит в репозиторий), а не API (меняет объект в кластере), чтобы сохранить Git как источник истины.</li>
+                  <li><strong>Update Strategy (Newest-Build):</strong> Не используйте <code>latest</code> (он мутабелен и кешируется). Стратегия <code>newest-build</code> смотрит на timestamp создания образа в реестре и обновляет тег в манифестах только на свежую сборку.</li>
+              </ul>`,
+        "tip": "Это позволяет CI-системе не иметь доступа к продуктовому кластеру (kubectl apply), а только пушить образы в реестр. ArgoCD Updater сам увидит новый образ и обновит Git-репозиторий."
       },
       {
-        q: "Как обеспечить Supply Chain Security используя Cosign и Admission Controller?",
-        a: `<p>Безопасность цепочки поставок гарантирует, что запущенный в кластере код — это именно то, что вы собрали.</p>
-            <h4 class="font-bold mt-2">Процесс защиты (Sigstore/Cosign):</h4>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Signing (CI):</strong> После сборки CI-система подписывает образ закрытым ключом:
-                    <div class="bg-slate-800 text-white p-2 rounded text-xs font-mono mt-1">cosign sign --key cosign.key my-repo/app:v1</div>
-                </li>
-                <li><strong>Verification (Cluster):</strong> Admission Controller (Kyverno или Gatekeeper) имеет публичный ключ. При попытке создания Пода он проверяет подпись образа в реестре.</li>
-                <li><strong>Enforcement:</strong> Если подпись невалидна или отсутствует, контроллер блокирует деплой.</li>
-            </ul>
-            <p class="mt-2">Также часто генерируется <strong>SBOM</strong> (Software Bill of Materials) для сканирования уязвимостей.</p>`,
-        tip: "Внедрение подписи образов предотвращает атаки типа 'Man-in-the-Middle' и запуск вредоносных контейнеров из недоверенных источников."
+        "q": "Как работает проверка подписей образов (Cosign/Sigstore)?",
+        "a": `<p>Механизм защиты цепочки поставок от подмены артефактов.</p>
+              <ol class="list-decimal pl-5 mt-2 space-y-1">
+                  <li><strong>Signing (CI):</strong> После сборки CI подписывает образ закрытым ключом и загружает подпись в реестр как OCI-артефакт.</li>
+                  <li><strong>Admission Control:</strong> В кластере работает контроллер (Kyverno или Policy Controller). При создании Пода он перехватывает запрос.</li>
+                  <li><strong>Verification:</strong> Контроллер проверяет наличие валидной подписи в реестре.</li>
+                  <li><strong>Mutation (TOCTOU Protection):</strong> Важно: контроллер часто заменяет тег образа (<code>:v1</code>) на его <strong>digest</strong> (<code>@sha256:...</code>), чтобы гарантировать, что запускается именно тот байт-код, который был проверен.</li>
+              </ol>`,
+        "tip": "Без мутации в дайджест существует теоретическая атака TOCTOU (Time-of-Check to Time-of-Use), когда образ подменяют в реестре между моментом проверки и моментом скачивания узлом."
       }
     ]
   },
   {
-    id: 's9', title: '9. Observability Deep Dive', desc: 'Prometheus vs VictoriaMetrics, eBPF, Tracing Sampling',
-    questions: [
+    "id": "s9",
+    "title": "9. Observability Deep Dive",
+    "desc": "VictoriaMetrics vs Prometheus, eBPF, Tracing",
+    "questions": [
       {
-        q: "В чем ключевые архитектурные отличия VictoriaMetrics от Prometheus и почему выбирают первую для High Load?",
-        a: `<p>Хотя VictoriaMetrics (VM) полностью совместима с PromQL, архитектурно она решает главные "боли" Prometheus:</p>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Storage & Compression:</strong> Prometheus использует TSDB с вертикальным сжатием. VM использует архитектуру MergeTree (похожую на ClickHouse), обеспечивая сжатие данных в 7-10 раз лучше и гораздо меньшее потребление RAM при большом количестве активных временных рядов (High Cardinality).</li>
-                <li><strong>Push vs Pull:</strong> Prometheus строго следует <em>Pull-модели</em>. VM поддерживает как Pull, так и эффективный <em>Push</em> (через vmagent), что критично для IoT или нестабильных сетей.</li>
-                <li><strong>Long-term Retention:</strong> Prometheus не предназначен для хранения данных годами (обычно 15-30 дней). VM создана как Long-term storage (LTS) с возможностью даунсэмплинга (downsampling) старых данных.</li>
-            </ul>`,
-        tip: "Частый паттерн: использовать Prometheus локально на кластерах только для скрапинга и алертинга (short retention), а данные отправлять через Remote Write в централизованный кластер VictoriaMetrics для долговременного хранения и аналитики."
+        "q": "В чем архитектурные преимущества VictoriaMetrics перед Prometheus?",
+        "a": `<p>Хотя VM совместима с PromQL, "под капотом" она решает проблемы масштабируемости Prometheus.</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Storage (MergeTree):</strong> Использует структуру данных, вдохновленную ClickHouse. Данные пишутся в "парты", которые фоново сливаются и сжимаются. Это дает сжатие в 7-10 раз лучше, чем TSDB Prometheus.</li>
+                  <li><strong>Performance:</strong> Оптимизирована под <strong>High Cardinality</strong> (большое число уникальных метрик, например, при ротации подов).</li>
+                  <li><strong>Instant Snapshots:</strong> Благодаря структуре MergeTree, создание бэкапа — это создание hard-links на файлы, что происходит мгновенно и без блокировок.</li>
+              </ul>`,
+        "tip": "VictoriaMetrics изначально создавалась как Long-Term Storage (LTS), тогда как стандартный Prometheus плохо переваривает хранение данных дольше пары недель."
       },
       {
-        q: "Что такое eBPF в контексте Observability и какие преимущества он дает перед Sidecar-подходом (Envoy)?",
-        a: `<p><strong>eBPF (Extended Berkeley Packet Filter)</strong> позволяет запускать песочницы с кодом прямо в ядре Linux без его пересборки.</p>
-            <h4 class="font-bold mt-2">Преимущества перед Sidecar (Istio/Linkerd):</h4>
-            <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Zero Instrumentation:</strong> Не нужно менять код приложения или внедрять sidecar-контейнеры в каждый Pod. eBPF видит все системные вызовы на уровне ядра.</li>
-                <li><strong>Performance:</strong> Отсутствие накладных расходов на сетевой стек (User space -> Kernel space -> Sidecar -> Kernel space). eBPF работает на скоростях ядра.</li>
-                <li><strong>Visibility:</strong> Инструменты вроде <em>Pixie</em> или <em>Cilium Hubble</em> могут автоматически строить карту сервисов, замерять DNS-задержки и анализировать TCP-ретрансмиты, что невидимо для обычных прокси уровня L7.</li>
-            </ul>`,
-        tip: "eBPF не убивает Service Mesh, а дополняет его. Sidecar все еще нужен для сложной логики L7 (mTLS, circuit breaking), но для чистого мониторинга (Observability) eBPF становится стандартом де-факто."
+        "q": "eBPF vs Sidecars: Почему eBPF выигрывает в производительности?",
+        "a": `<p>Традиционный Service Mesh (Sidecar) требует прокси (Envoy) в каждом поде.</p>
+              <p><strong>Проблема Sidecar:</strong> Путь пакета удлиняется. Трафик должен пройти: App -> Kernel -> Sidecar -> Kernel -> Network. Это множественные переключения контекста (Context Switches) и копирование памяти.</p>
+              <p><strong>Преимущество eBPF:</strong> Программа eBPF работает в песочнице внутри ядра Linux. Она обрабатывает пакеты сразу на сетевом интерфейсе.
+              <br>Результат: <strong>Zero Instrumentation</strong> (не нужно менять поды) и отсутствие накладных расходов на переключение контекста в User Space.</p>`,
+        "tip": "Инструменты вроде Cilium используют eBPF для полной замены kube-proxy, обеспечивая наблюдаемость L3-L7 с минимальным оверхедом."
       },
       {
-        q: "Объясните разницу между Head-based и Tail-based Sampling в распределенном трейсинге (Jaeger/OpenTelemetry).",
-        a: `<p>Сэмплинг необходим, так как сохранять 100% трейсов в высоконагруженной системе слишком дорого (CPU + Storage).</p>
-            <h4 class="font-bold mt-2">1. Head-based Sampling:</h4>
-            <p>Решение принимается <strong>в начале</strong> запроса (на первом сервисе).
-            <br><em>Пример:</em> "Сохранять каждый 10-й запрос".
-            <br><em>Проблема:</em> Вы можете пропустить редкую ошибку, так как решение "отбросить" было принято до того, как ошибка произошла.</p>
-            <h4 class="font-bold mt-2">2. Tail-based Sampling:</h4>
-            <p>Решение принимается <strong>в конце</strong>, когда весь трейс уже собран в буфере (например, в OTEL Collector).
-            <br><em>Логика:</em> "Если в трейсе есть статус 500 или latency > 2s — сохранить, иначе — отбросить".
-            <br><em>Цена:</em> Требует много памяти на коллекторе для буферизации всех "живых" спанов до завершения запроса.</p>`,
-        tip: "Для продакшена идеальна комбинация: Probabilistic (1%) для понимания общей картины + Tail-based для 100% сохранения ошибок и медленных запросов."
+        "q": "Head-based vs Tail-based Sampling в трейсинге: что выбрать?",
+        "a": `<p>Сэмплинг нужен, чтобы не хранить терабайты трейсов.</p>
+              <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Head-based:</strong> Решение "сохранять или нет" принимается <strong>в начале</strong> запроса (на первом сервисе).
+                      <br><em>Минус:</em> Слепота к ошибкам. Если вы пишете 1% трафика, вы упустите редкую 500-ю ошибку, так как решение "не писать" было принято до её возникновения.</li>
+                  <li><strong>Tail-based:</strong> Решение принимается <strong>в конце</strong>, когда весь трейс собран в буфере коллектора.
+                      <br><em>Плюс:</em> Можно сохранить 100% ошибок и медленных запросов.
+                      <br><em>Минус:</em> Дорого. Требует держать в памяти коллектора все данные до завершения трейса.</li>
+              </ul>`,
+        "tip": "Идеальный баланс: Head-based (для общей статистики) + Tail-based (для гарантированного сохранения аномалий)."
       }
     ]
   }
