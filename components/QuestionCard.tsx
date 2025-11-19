@@ -83,7 +83,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       <>
         {parts.map((part, i) => 
           part.toLowerCase() === query.toLowerCase() ? (
-            <mark key={i} className="bg-yellow-200 text-slate-900 rounded-sm px-0.5">{part}</mark>
+            <mark key={i} className="bg-yellow-200 dark:bg-yellow-500/50 text-slate-900 dark:text-white rounded-sm px-0.5">{part}</mark>
           ) : (
             part
           )
@@ -109,12 +109,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         return part;
       }
       // It's a text node, perform replacement
-      return part.replace(regex, '<mark class="bg-yellow-200 text-slate-900 rounded-sm px-0">$1</mark>');
+      return part.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-500/50 text-slate-900 dark:text-white rounded-sm px-0">$1</mark>');
     }).join('');
   }, [data.a, searchQuery]);
 
   return (
-    <article className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden transition-all hover:shadow-md group mb-6 relative">
+    <article className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all hover:shadow-md group mb-6 relative">
       {/* Header / Question */}
       <div 
         className="p-4 sm:p-6 cursor-pointer select-none" 
@@ -123,9 +123,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         <div className="flex flex-col gap-4">
             
             {/* Top Row: Tags & Actions */}
-            <div className="flex justify-between items-start">
+            <div className="flex flex-wrap justify-between items-start gap-3">
                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isRead ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isRead ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
                     {isRead ? 'ИЗУЧЕНО' : 'НОВОЕ'}
                     </span>
                     <span className="text-xs text-slate-400 font-mono">#{index + 1}</span>
@@ -137,8 +137,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
                     className={`group/btn relative p-1.5 rounded-full transition-all duration-200 transform active:scale-95
                         ${isFavorite 
-                        ? 'text-rose-500 hover:text-rose-600 bg-rose-50' 
-                        : 'text-slate-300 hover:text-rose-500 hover:bg-slate-50'
+                        ? 'text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-900/20' 
+                        : 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                     aria-label={isFavorite ? "Remove from important" : "Mark as Difficult"}
                     >
@@ -152,8 +152,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     onClick={(e) => { e.stopPropagation(); onToggleBookmark(); }}
                     className={`group/btn relative p-1.5 rounded-full transition-all duration-200 transform active:scale-95
                         ${isBookmarked 
-                        ? 'text-yellow-400 hover:text-yellow-500 bg-yellow-50' 
-                        : 'text-slate-300 hover:text-yellow-400 hover:bg-slate-50'
+                        ? 'text-yellow-400 hover:text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' 
+                        : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                     aria-label={isBookmarked ? "Remove from saved" : "Save for later"}
                     >
@@ -163,132 +163,140 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     </button>
                     
                     {/* Chevron */}
-                    <div className={`text-slate-300 transition-transform duration-300 ml-2 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
+                    <div className={`text-slate-300 dark:text-slate-600 transition-transform duration-300 ml-2 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                 </div>
             </div>
             
             {/* Question Text */}
-            <h3 className={`text-base sm:text-lg font-bold text-slate-800 leading-snug group-hover:text-${levelColor} transition-colors pr-0 sm:pr-8`}>
+            <h3 className={`text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 leading-snug group-hover:text-${levelColor} dark:group-hover:text-blue-400 transition-colors pr-0 sm:pr-8`}>
                 {renderHighlightedText(data.q, searchQuery)}
             </h3>
         </div>
       </div>
 
-      {/* Content Area */}
+      {/* Content Area - Using Grid Animation for infinite height support */}
       <div 
-        className={`transition-all duration-500 ease-in-out bg-slate-50/50 border-t border-slate-100 overflow-hidden ${isOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}
+        className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
       >
-        {/* AI Feedback Section */}
-        <div className="px-4 sm:px-6 pt-6 pb-2">
-          {!isAIActive ? (
-            /* Hidden State - Activation Banner */
-            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all hover:border-violet-300 hover:bg-violet-50/30 group/ai-toggle">
-               <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm text-xl group-hover/ai-toggle:scale-110 transition-transform">
-                    🤖
-                  </div>
-                  <div className="text-left flex-1">
-                    <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        Умный помощник
-                        <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-normal uppercase tracking-wide">Скрыт</span>
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                        Включите для <span className="font-semibold text-violet-600">симуляции интервью</span> или <span className="font-semibold text-violet-600">разбора кода</span>.
-                    </p>
-                  </div>
-               </div>
-               <button
-                 onClick={(e) => { e.stopPropagation(); setIsAIActive(true); }}
-                 className="w-full sm:w-auto whitespace-nowrap px-4 py-2.5 bg-white border border-slate-200 shadow-sm text-slate-700 text-xs font-bold rounded-lg hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all flex items-center justify-center gap-2 active:scale-95"
-               >
-                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                 <span>Активировать AI</span>
-               </button>
-            </div>
-          ) : (
-            /* Active State - Full UI */
-            <div className="relative animate-fade-in">
-                <div className="absolute top-2 right-2 z-10">
-                    <button 
-                        onClick={() => setIsAIActive(false)}
-                        className="text-[10px] font-medium text-slate-400 hover:text-slate-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200/50 transition-colors"
-                        title="Скрыть помощника"
-                    >
-                        ✕ Скрыть
-                    </button>
+        <div className="overflow-hidden bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 min-h-0">
+          
+          {/* AI Feedback Section */}
+          <div className="px-4 sm:px-6 pt-6 pb-2">
+            {!isAIActive ? (
+              /* Hidden State - Activation Banner */
+              <div className="bg-slate-50 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all hover:border-violet-300 dark:hover:border-violet-500 hover:bg-violet-50/30 dark:hover:bg-violet-900/20 group/ai-toggle">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shadow-sm text-xl group-hover/ai-toggle:scale-110 transition-transform">
+                      🤖
+                    </div>
+                    <div className="text-left flex-1">
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                          Умный помощник
+                          <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-normal uppercase tracking-wide">Скрыт</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Включите для <span className="font-semibold text-violet-600 dark:text-violet-400">симуляции интервью</span> или <span className="font-semibold text-violet-600 dark:text-violet-400">разбора кода</span>.
+                      </p>
+                    </div>
                 </div>
-                <AIFeedback question={data.q} answer={data.a} />
-            </div>
-          )}
-        </div>
-
-        {/* Answer Container */}
-        <div className="relative">
-          {/* Reveal Blocker - Only blocks answer */}
-          {!isRevealed && (
-            <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <button 
-                onClick={handleReveal}
-                className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-full font-bold shadow-lg transform hover:scale-105 transition-all flex items-center gap-2 text-sm w-full sm:w-auto justify-center"
-              >
-                👁️ Показать ответ
-              </button>
-            </div>
-          )}
-
-          <div className={`p-4 sm:p-6 pb-6 pt-4 text-slate-700 leading-relaxed transition-filter duration-300 ${!isRevealed ? 'blur-sm select-none h-24 overflow-hidden' : ''}`}>
-            
-            {/* Copy Answer Button (Visible only when revealed) */}
-            {isRevealed && (
-              <div className="flex justify-end mb-2">
-                <button 
-                  onClick={handleCopyAnswer}
-                  className={`group/copy relative flex items-center gap-1.5 text-xs font-bold transition-all duration-200 p-2 rounded-lg border ${
-                    isAnswerCopied 
-                      ? 'bg-green-50 text-green-600 border-green-200 shadow-sm' 
-                      : 'bg-white/80 hover:bg-white text-slate-400 border-slate-200 hover:text-blue-600 hover:border-blue-200 hover:shadow-sm'
-                  }`}
-                  aria-label="Copy Question & Answer"
+                <button
+                  onClick={(e) => { e.stopPropagation(); setIsAIActive(true); }}
+                  className="w-full sm:w-auto whitespace-nowrap px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
-                  <div className="relative w-4 h-4 flex items-center justify-center">
-                     {/* Checkmark Icon (Scale In) */}
-                    <svg 
-                      className={`w-4 h-4 absolute inset-0 transition-all duration-300 transform ${isAnswerCopied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} 
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    
-                    {/* Clipboard Icon (Fade Out) */}
-                    <svg 
-                      className={`w-4 h-4 absolute inset-0 transition-all duration-300 transform ${isAnswerCopied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} 
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                  </div>
-                  <span className={`transition-colors duration-200 ${isAnswerCopied ? 'text-green-600' : ''}`}>
-                    {isAnswerCopied ? 'Copied!' : 'Copy Q&A'}
-                  </span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                  <span>Активировать AI</span>
                 </button>
               </div>
+            ) : (
+              /* Active State - Full UI */
+              <div className="relative animate-fade-in">
+                  <div className="absolute top-2 right-2 z-10">
+                      <button 
+                          onClick={() => setIsAIActive(false)}
+                          className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                          title="Скрыть помощника"
+                      >
+                          ✕ Скрыть
+                      </button>
+                  </div>
+                  <AIFeedback question={data.q} answer={data.a} />
+              </div>
             )}
+          </div>
 
-            {/* Answer Content HTML */}
+          {/* Answer Container - Smooth Slide Down Animation */}
+          <div className="relative">
+            {/* Content Wrapper for Height Transition */}
             <div 
-              className="prose prose-slate prose-sm max-w-none [&_code]:bg-slate-100 [&_code]:text-violet-700 [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_h4]:font-bold [&_h4]:text-slate-900 [&_pre]:overflow-x-auto [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-3 [&_pre]:rounded-lg"
-              dangerouslySetInnerHTML={{ __html: processedAnswerHtml }} 
-            />
+              className={`transition-[grid-template-rows,opacity] duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] grid ${isRevealed ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+            >
+              <div className="overflow-hidden min-h-0">
+                  <div className={`p-4 sm:p-6 pb-6 pt-4 text-slate-700 dark:text-slate-300 leading-relaxed transform transition-transform duration-700 ease-out ${isRevealed ? 'translate-y-0' : '-translate-y-4'}`}>
+                      
+                      {/* Copy Answer Button (Visible only when revealed) */}
+                      <div className="flex justify-end mb-2">
+                          <button 
+                          onClick={handleCopyAnswer}
+                          className={`group/copy relative flex items-center gap-1.5 text-xs font-bold transition-all duration-200 p-2 rounded-lg border ${
+                              isAnswerCopied 
+                              ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 shadow-sm' 
+                              : 'bg-white/80 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:text-blue-600 hover:border-blue-200 hover:shadow-sm'
+                          }`}
+                          aria-label="Copy Question & Answer"
+                          >
+                          <div className="relative w-4 h-4 flex items-center justify-center">
+                              {/* Checkmark Icon (Scale In) */}
+                              <svg 
+                              className={`w-4 h-4 absolute inset-0 transition-all duration-300 transform ${isAnswerCopied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} 
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                              >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                              
+                              {/* Clipboard Icon (Fade Out) */}
+                              <svg 
+                              className={`w-4 h-4 absolute inset-0 transition-all duration-300 transform ${isAnswerCopied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} 
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                              >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                              </svg>
+                          </div>
+                          <span className={`transition-colors duration-200 ${isAnswerCopied ? 'text-green-600 dark:text-green-400' : ''}`}>
+                              {isAnswerCopied ? 'Copied!' : 'Copy Q&A'}
+                          </span>
+                          </button>
+                      </div>
 
-            {/* Pro Tip */}
-            {data.tip && (
-              <div className="mt-6 relative pl-4 border-l-4 border-emerald-500 bg-emerald-50 p-4 rounded-r-lg">
-                <span className="absolute -top-3 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                  Pro Tip
-                </span>
-                <p className="text-emerald-800 text-sm italic mt-1">{renderHighlightedText(data.tip, searchQuery)}</p>
+                      {/* Answer Content HTML */}
+                      <div 
+                      className="prose prose-slate dark:prose-invert prose-sm max-w-none [&_code]:bg-slate-100 dark:[&_code]:bg-slate-700 [&_code]:text-violet-700 dark:[&_code]:text-violet-300 [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_h4]:font-bold [&_h4]:text-slate-900 dark:[&_h4]:text-white [&_pre]:overflow-x-auto [&_pre]:bg-slate-800 dark:[&_pre]:bg-black/50 [&_pre]:text-slate-100 [&_pre]:p-3 [&_pre]:rounded-lg"
+                      dangerouslySetInnerHTML={{ __html: processedAnswerHtml }} 
+                      />
+
+                      {/* Pro Tip */}
+                      {data.tip && (
+                      <div className="mt-6 relative pl-4 border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-r-lg">
+                          <span className="absolute -top-3 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                          Pro Tip
+                          </span>
+                          <p className="text-emerald-800 dark:text-emerald-200 text-sm italic mt-1">{renderHighlightedText(data.tip, searchQuery)}</p>
+                      </div>
+                      )}
+                  </div>
+              </div>
+            </div>
+
+            {/* Reveal Button - Not absolute anymore, takes up space */}
+            {!isRevealed && (
+              <div className="flex items-center justify-center p-6 w-full">
+                <button 
+                  onClick={handleReveal}
+                  className="bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 px-6 py-3 rounded-full font-bold shadow-lg transform hover:scale-105 transition-all flex items-center gap-2 text-sm w-full sm:w-auto justify-center"
+                >
+                  👁️ Показать ответ
+                </button>
               </div>
             )}
           </div>
