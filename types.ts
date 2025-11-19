@@ -34,7 +34,8 @@ export type AIPersona =
   | 'devil_advocate'
   | 'analyst_compare'
   | 'troubleshooter_debug'
-  | 'security_auditor';
+  | 'security_auditor'
+  | 'explain_code';
 
 export interface AIMessage {
   role: 'user' | 'model';

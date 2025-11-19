@@ -77,8 +77,8 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
 
   const selectedPersonaConfig = PERSONAS.find(p => p.id === selectedPersonaId) || PERSONAS[0];
 
-  const handleAction = async () => {
-    const persona = selectedPersonaId;
+  const handleAction = async (personaOverride?: AIPersona) => {
+    const persona = personaOverride || selectedPersonaId;
 
     if (persona.startsWith('interviewer') && !input.trim()) {
       alert("Пожалуйста, напишите ваш ответ перед проверкой.");
@@ -154,24 +154,47 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
           onChange={(e) => setInput(e.target.value)}
         />
 
-        {/* Main Action Button */}
-        <button
-          onClick={handleAction}
-          disabled={loading}
-          className={`w-full py-3 rounded-lg font-bold text-sm shadow-md transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${selectedPersonaConfig.style}`}
-        >
-           {loading ? (
-             <>
-               <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-               </svg>
-               <span>Анализирую...</span>
-             </>
-           ) : (
-             <span>🚀 Запустить: {selectedPersonaConfig.label}</span>
-           )}
-        </button>
+        {/* Quick Actions Row */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Main Action Button */}
+          <button
+            onClick={() => handleAction()}
+            disabled={loading}
+            className={`flex-1 py-3 rounded-lg font-bold text-sm shadow-md transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${selectedPersonaConfig.style}`}
+          >
+            {loading && activePersona === selectedPersonaId ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Анализирую...</span>
+              </>
+            ) : (
+              <span>🚀 Запустить: {selectedPersonaConfig.label}</span>
+            )}
+          </button>
+
+          {/* Quick Action: Explain with Code */}
+          <button
+            onClick={() => handleAction('explain_code')}
+            disabled={loading}
+            className="sm:w-auto px-4 py-3 bg-slate-200 text-slate-700 font-bold text-sm rounded-lg hover:bg-slate-300 transition-all shadow-sm flex items-center justify-center gap-2 border border-slate-300 active:scale-[0.99] whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed"
+            title="Show YAML or kubectl command immediately"
+          >
+             {loading && activePersona === 'explain_code' ? (
+                <svg className="animate-spin h-5 w-5 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+             ) : (
+               <>
+                 <span className="text-lg">💻</span>
+                 <span>Explain with Code</span>
+               </>
+             )}
+          </button>
+        </div>
       </div>
 
       {/* Feedback Display Area */}
@@ -183,7 +206,9 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
             <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
               <span>🤖 Ответ AI</span>
               <span className="text-slate-300">|</span>
-              <span className="text-slate-500">{PERSONAS.find(p => p.id === activePersona)?.label}</span>
+              <span className="text-slate-500">
+                {activePersona === 'explain_code' ? 'Explain with Code' : PERSONAS.find(p => p.id === activePersona)?.label}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <button 

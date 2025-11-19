@@ -119,6 +119,20 @@ const PERSONA_PROMPTS: Record<AIPersona, (q: string) => string> = {
     3. **Hardening:** Provide specific remediation steps (NetworkPolicy, SecurityContext, RBAC least privilege, Seccomp).
     
     **Tone:** Serious, vigilant, focused on "Zero Trust" and "Defense in Depth".
+  `,
+
+  explain_code: (q) => `
+    You are a **DevOps Engineer** providing practical implementation details.
+    
+    Topic: "${q}"
+    
+    **Instructions:**
+    1. **Direct Output:** Provide the **YAML manifest** or **kubectl command** for this concept immediately.
+    2. **No Theory:** Do not explain "what" it is. Only show "how" to implement it.
+    3. **Best Practice:** Use standard production-ready configurations.
+    4. **Comments:** Add brief comments inside the code block explaining key flags/fields.
+    
+    **Tone:** Minimalist, code-centric.
   `
 };
 
