@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { LevelType, LevelConfig } from './types';
 import { LEVELS } from './constants';
@@ -321,11 +320,16 @@ const App: React.FC = () => {
             {isSearchActive && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white cursor-pointer group/app relative"
+                aria-label="Clear search"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
+                {/* Tooltip */}
+                <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] font-medium rounded shadow-lg opacity-0 group-hover/app:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                  Clear search
+                </span>
               </button>
             )}
           </div>
@@ -413,8 +417,16 @@ const App: React.FC = () => {
         {/* Mobile Header */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-10 flex-shrink-0">
           <div className="md:hidden mr-4 flex items-center gap-3">
-             <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-slate-100">
+             <button 
+               onClick={() => setIsMobileMenuOpen(true)} 
+               className="group/app relative text-slate-700 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-slate-100"
+               aria-label="Open menu"
+             >
                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+               {/* Tooltip */}
+               <span className="absolute top-full mt-2 left-0 px-2 py-1 bg-slate-800 text-white text-[10px] font-medium rounded shadow-lg opacity-0 group-hover/app:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                 Open menu
+               </span>
              </button>
              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-${levelData?.color} text-white`}>
                 {levelData?.title}
