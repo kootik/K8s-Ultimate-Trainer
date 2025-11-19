@@ -1,4 +1,3 @@
-
 import { LevelConfig, LevelType } from './types';
 
 const JUNIOR_MODULES = [
@@ -94,7 +93,18 @@ const MIDDLE_MODULES = [
 7. Kubelet -> Обновляет статус в API Server -> Etcd
             </div>
             <p>Никто не отдает прямых приказов. Все компоненты работают через наблюдение (Watch) за изменениями в Etcd.</p>
-            <p class="mt-2 text-sm bg-blue-50 p-2 rounded border border-blue-100"><strong>GitOps Context:</strong> В продакшене <code>kubectl apply</code> редко выполняется вручную. Обычно это делает CD-оператор (ArgoCD, Flux), который автоматически синхронизирует состояние Git-репозитория с кластером. <code>kubectl apply</code> здесь — это "последняя миля" автоматизированного пайплайна.</p>`,
+            
+            <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+              <h5 class="font-bold text-blue-800 mb-2">GitOps Workflow (ArgoCD / Flux):</h5>
+              <p class="mb-2 text-blue-900">В продакшене <code>kubectl apply</code> редко выполняется вручную. Обычно используется процесс:</p>
+              <ol class="list-decimal pl-4 space-y-1 text-blue-900">
+                 <li><strong>Commit:</strong> Инженер пушит изменения YAML/Helm в Git-репозиторий.</li>
+                 <li><strong>Detect:</strong> ArgoCD (внутри кластера) видит изменение хэша коммита (через Webhook или Polling).</li>
+                 <li><strong>Diff:</strong> Контроллер сравнивает <em>Desired State</em> (Git) с <em>Live State</em> (Etcd).</li>
+                 <li><strong>Sync:</strong> Если есть дрифт (OutOfSync), оператор выполняет применение манифестов (аналог <code>kubectl apply</code>) для приведения кластера к состоянию в Git.</li>
+              </ol>
+              <p class="mt-2 text-xs text-blue-700 font-medium">Это гарантирует, что Git является единственным источником правды (SSOT) и защищает от неконтролируемых ручных правок.</p>
+            </div>`,
         tip: "Ключевое слово — 'Reconciliation Loop' (Петля согласования)."
       },
       {
@@ -154,6 +164,17 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
                 <li><strong>Ingress (Controller):</strong> Отвечает за <strong>L7</strong> (HTTP/HTTPS) маршрутизацию "External-to-Service". Он "читает" заголовки Host и Path и направляет трафик. Ingress не может работать без CNI.</li>
             </ul>`,
         tip: "CNI — это дороги и провода. Ingress — это регулировщик на въезде."
+      },
+      {
+        q: "Почему Cilium и eBPF считаются революцией в мире CNI?",
+        a: `<p>Традиционные CNI (Flannel, Calico в стандартном режиме) часто используют <strong>iptables</strong> для маршрутизации и NAT. При масштабах в тысячи сервисов iptables становится узким местом из-за последовательного перебора правил.</p>
+            <p><strong>Cilium</strong> использует технологию <strong>eBPF</strong> (Extended Berkeley Packet Filter):</p>
+            <ul class="list-disc pl-5 space-y-2 mt-2">
+                <li><strong>Kernel Level Performance:</strong> Программы eBPF запускаются в песочнице внутри ядра Linux. Пакетам не нужно проходить через тяжеловесный сетевой стек TCP/IP для простой переадресации, что дает производительность близкую к "голому железу".</li>
+                <li><strong>Без iptables:</strong> Cilium заменяет гигантские таблицы правил на эффективные хэш-мапы eBPF.</li>
+                <li><strong>L7 Observability:</strong> Благодаря eBPF, Cilium видит не только IP-пакеты, но и понимает протоколы приложений (HTTP, gRPC, Kafka, DNS), позволяя строить карту взаимодействий (Hubble) без внедрения Sidecar-контейнеров.</li>
+            </ul>`,
+        tip: "Если вас спросят про 'Service Mesh без сайдкаров' (Sidecar-less), они имеют в виду именно возможности Cilium Service Mesh."
       },
       {
         q: "Как работает Kube-proxy и режимы (iptables vs IPVS)?",
