@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { generateAIResponse } from '../services/geminiService';
 import { AIPersona } from '../types';
 
@@ -34,16 +35,6 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
     navigator.clipboard.writeText(feedback);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  // Markdown rendering helper
-  const renderMarkdown = (text: string) => {
-    let html = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/### (.*?)\n/g, '<h3 class="text-md font-bold mt-2 mb-1">$1</h3>')
-      .replace(/\n- (.*?)/g, '<br>• $1');
-    
-    return { __html: html };
   };
 
   return (
@@ -158,10 +149,9 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
             </div>
           </div>
 
-          <div 
-            className="prose prose-sm max-w-none text-slate-800 leading-relaxed whitespace-pre-wrap font-medium"
-            dangerouslySetInnerHTML={renderMarkdown(feedback)} 
-          />
+          <ReactMarkdown className="prose prose-sm max-w-none text-slate-800 leading-relaxed font-medium prose-headings:font-bold prose-h3:text-indigo-700 prose-a:text-blue-600 prose-code:text-rose-600 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none">
+            {feedback || ''}
+          </ReactMarkdown>
         </div>
       )}
     </div>
