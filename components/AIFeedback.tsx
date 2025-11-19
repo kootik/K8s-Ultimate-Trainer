@@ -9,14 +9,77 @@ interface AIFeedbackProps {
   answer: string;
 }
 
+interface PersonaConfig {
+  id: AIPersona;
+  label: string;
+  style: string;
+  tooltip: string;
+}
+
+const PERSONAS: PersonaConfig[] = [
+  {
+    id: 'interviewer_strict',
+    label: '👨‍⚖️ Строгая проверка',
+    style: 'bg-slate-800 text-white hover:bg-slate-700',
+    tooltip: 'Симуляция Bar Raiser интервью. Оценка 1-5, жесткий поиск пробелов в знаниях и вопросы по "edge cases".'
+  },
+  {
+    id: 'interviewer_friendly',
+    label: '🤝 Мягкий ментор',
+    style: 'bg-emerald-600 text-white hover:bg-emerald-500',
+    tooltip: 'Поддерживающий стиль. Валидация правильных ответов, мягкая коррекция ошибок и советы по Soft Skills.'
+  },
+  {
+    id: 'teacher_eli5',
+    label: '👶 Объясни просто (ELI5)',
+    style: 'bg-purple-100 text-purple-700 hover:bg-purple-200',
+    tooltip: 'Объяснение через аналогии из реальной жизни (аэропорт, кухня, библиотека) без сложного жаргона.'
+  },
+  {
+    id: 'architect_deep',
+    label: '🧠 Deep Dive',
+    style: 'bg-blue-100 text-blue-700 hover:bg-blue-200',
+    tooltip: 'Архитектурный разбор: внутренности (Etcd, Kernel, Cgroups), компромиссы (Trade-offs) и масштабирование.'
+  },
+  {
+    id: 'devil_advocate',
+    label: '😈 Вопрос с подвохом',
+    style: 'bg-red-100 text-red-700 hover:bg-red-200',
+    tooltip: 'Chaos Engineering: сценарии сбоев (Network Partition, OOM) и проверка устойчивости решения.'
+  },
+  {
+    id: 'analyst_compare',
+    label: '📊 Сравнение (Analyst)',
+    style: 'bg-amber-100 text-amber-800 hover:bg-amber-200',
+    tooltip: 'Генерация матрицы сравнения (Markdown таблица) с альтернативными технологиями и подходами.'
+  },
+  {
+    id: 'troubleshooter_debug',
+    label: '🛠️ Debug (SRE)',
+    style: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200',
+    tooltip: 'Практический чек-лист команд kubectl для отладки инцидентов и анализ Root Cause.'
+  },
+  {
+    id: 'security_auditor',
+    label: '🛡️ Security Audit',
+    style: 'bg-slate-800 text-yellow-400 border border-yellow-600/50 hover:bg-slate-700',
+    tooltip: 'Анализ уязвимостей, векторов атак и рекомендации по защите (Hardening) в стиле экзамена CKS.'
+  }
+];
+
 const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<AIPersona>('interviewer_strict');
   const [activePersona, setActivePersona] = useState<AIPersona | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleAction = async (persona: AIPersona) => {
+  const selectedPersonaConfig = PERSONAS.find(p => p.id === selectedPersonaId) || PERSONAS[0];
+
+  const handleAction = async () => {
+    const persona = selectedPersonaId;
+
     if (persona.startsWith('interviewer') && !input.trim()) {
       alert("Пожалуйста, напишите ваш ответ перед проверкой.");
       return;
@@ -49,127 +112,95 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
         </h4>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
+        
+        {/* Persona Selector */}
+        <div>
+           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+             Выберите режим AI:
+           </label>
+           <div className="relative">
+             <select
+               value={selectedPersonaId}
+               onChange={(e) => setSelectedPersonaId(e.target.value as AIPersona)}
+               className="appearance-none w-full bg-white border border-slate-300 text-slate-700 py-2.5 pl-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 text-sm font-medium shadow-sm cursor-pointer hover:border-slate-400 transition-colors"
+             >
+               {PERSONAS.map(p => (
+                 <option key={p.id} value={p.id}>{p.label}</option>
+               ))}
+             </select>
+             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
+               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+             </div>
+           </div>
+        </div>
+
+        {/* Info Box for Selected Persona */}
+        <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 flex gap-3 animate-fade-in">
+          <div className="text-xl mt-0.5">💡</div>
+          <div className="text-xs text-slate-600 leading-relaxed">
+             <span className="font-bold text-indigo-900 block mb-0.5">Роль: {selectedPersonaConfig.label}</span>
+             {selectedPersonaConfig.tooltip}
+          </div>
+        </div>
+
+        {/* Input Area */}
         <textarea
-          className="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[80px] bg-white resize-y"
-          placeholder="Введите ваш ответ здесь для проверки..."
+          className="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[80px] bg-white resize-y transition-shadow"
+          placeholder={selectedPersonaId.startsWith('interviewer') 
+            ? "📝 Введите ваш ответ здесь, чтобы AI-интервьюер мог его оценить..." 
+            : "💬 Добавьте уточняющий вопрос или контекст (необязательно)..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => handleAction('interviewer_strict')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-700 transition disabled:opacity-50"
-          >
-            👨‍⚖️ Строгая проверка
-          </button>
-           <button
-            onClick={() => handleAction('interviewer_friendly')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded hover:bg-emerald-500 transition disabled:opacity-50"
-          >
-            🤝 Мягкий ментор
-          </button>
-          <button
-            onClick={() => handleAction('teacher_eli5')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-bold rounded hover:bg-purple-200 transition disabled:opacity-50"
-          >
-            👶 Объясни просто (ELI5)
-          </button>
-          <button
-            onClick={() => handleAction('architect_deep')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-bold rounded hover:bg-blue-200 transition disabled:opacity-50"
-          >
-            🧠 Deep Dive
-          </button>
-           <button
-            onClick={() => handleAction('devil_advocate')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-red-100 text-red-700 text-xs font-bold rounded hover:bg-red-200 transition disabled:opacity-50"
-          >
-            😈 Вопрос с подвохом
-          </button>
-          <button
-            onClick={() => handleAction('analyst_compare')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-amber-100 text-amber-800 text-xs font-bold rounded hover:bg-amber-200 transition disabled:opacity-50"
-          >
-            📊 Сравнение (Analyst)
-          </button>
-          <button
-            onClick={() => handleAction('troubleshooter_debug')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-cyan-100 text-cyan-800 text-xs font-bold rounded hover:bg-cyan-200 transition disabled:opacity-50"
-          >
-            🛠️ Debug (SRE)
-          </button>
-          <button
-            onClick={() => handleAction('security_auditor')}
-            disabled={loading}
-            className="px-3 py-1.5 bg-slate-800 text-yellow-400 border border-yellow-600/50 text-xs font-bold rounded hover:bg-slate-700 transition disabled:opacity-50 flex items-center gap-1"
-          >
-            🛡️ Security Audit
-          </button>
-        </div>
+        {/* Main Action Button */}
+        <button
+          onClick={handleAction}
+          disabled={loading}
+          className={`w-full py-3 rounded-lg font-bold text-sm shadow-md transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${selectedPersonaConfig.style}`}
+        >
+           {loading ? (
+             <>
+               <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+               <span>Анализирую...</span>
+             </>
+           ) : (
+             <span>🚀 Запустить: {selectedPersonaConfig.label}</span>
+           )}
+        </button>
       </div>
 
-      {loading && (
-        <div className="mt-4 p-4 bg-white border border-slate-100 rounded-lg animate-pulse">
-          <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-        </div>
-      )}
-
+      {/* Feedback Display Area */}
       {feedback && (
-        <div className="mt-4 p-5 bg-white border border-indigo-100 rounded-lg shadow-sm relative overflow-hidden animate-fade-in group/feedback">
+        <div className="mt-6 p-5 bg-white border border-indigo-100 rounded-lg shadow-sm relative overflow-hidden animate-fade-in group/feedback">
           <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
           
-          <div className="flex justify-between items-start mb-2">
-            <div className="text-xs font-bold text-indigo-500 uppercase tracking-wider">
-              {activePersona === 'interviewer_strict' && 'Вердикт интервьюера'}
-              {activePersona === 'interviewer_friendly' && 'Совет ментора'}
-              {activePersona === 'teacher_eli5' && 'Простое объяснение'}
-              {activePersona === 'architect_deep' && 'Архитектурный разбор'}
-              {activePersona === 'devil_advocate' && 'Follow-up Challenge'}
-              {activePersona === 'analyst_compare' && 'Сравнительный анализ'}
-              {activePersona === 'troubleshooter_debug' && 'План отладки (SRE)'}
-              {activePersona === 'security_auditor' && 'Аудит безопасности (CKS)'} 
+          <div className="flex justify-between items-start mb-4 pb-2 border-b border-slate-100">
+            <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
+              <span>🤖 Ответ AI</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-slate-500">{PERSONAS.find(p => p.id === activePersona)?.label}</span>
             </div>
             <div className="flex items-center gap-1">
-              {activePersona && (
-                <button 
-                  onClick={() => handleAction(activePersona)}
-                  disabled={loading}
-                  className="group/ai relative text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-indigo-50 disabled:opacity-50"
-                  aria-label="Regenerate response"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  {/* Tooltip */}
-                  <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] font-medium rounded shadow-lg opacity-0 group-hover/ai:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                    Regenerate
-                  </span>
-                </button>
-              )}
               <button 
                 onClick={handleCopy}
-                className="group/ai relative text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded hover:bg-indigo-50"
-                aria-label="Copy feedback"
+                className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 rounded-md hover:bg-indigo-50 flex items-center gap-1.5 text-xs font-medium"
               >
                 {isCopied ? (
-                   <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                   <>
+                     <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                     <span className="text-green-600">Скопировано</span>
+                   </>
                 ) : (
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                   <>
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                     <span>Копировать</span>
+                   </>
                 )}
-                {/* Tooltip */}
-                <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] font-medium rounded shadow-lg opacity-0 group-hover/ai:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                  {isCopied ? "Copied!" : "Copy feedback"}
-                </span>
               </button>
             </div>
           </div>
