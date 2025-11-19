@@ -31,7 +31,9 @@ export type AIPersona =
   | 'interviewer_friendly' 
   | 'teacher_eli5' 
   | 'architect_deep' 
-  | 'devil_advocate';
+  | 'devil_advocate'
+  | 'troubleshooter_debug'
+  | 'security_auditor';
 
 export interface AIMessage {
   role: 'user' | 'model';

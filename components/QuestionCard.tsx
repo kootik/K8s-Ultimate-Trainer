@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Question } from '../types';
 import AIFeedback from './AIFeedback';
 
@@ -12,7 +12,13 @@ interface QuestionCardProps {
   onToggleBookmark: () => void;
   onToggleFavorite: () => void;
   levelColor: string;
+  searchQuery?: string;
 }
+
+// Utility to escape regex characters
+const escapeRegExp = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
 const QuestionCard: React.FC<QuestionCardProps> = ({ 
   data, 
@@ -23,7 +29,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   onReveal, 
   onToggleBookmark,
   onToggleFavorite,
-  levelColor 
+  levelColor,
+  searchQuery = '' 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -53,6 +60,45 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     setTimeout(() => setIsAnswerCopied(false), 2000);
   };
 
+  // Highlight Logic for Plain Text (Question & Tip)
+  const renderHighlightedText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    
+    const parts = text.split(new RegExp(`(${escapeRegExp(query)})`, 'gi'));
+    return (
+      <>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase() ? (
+            <mark key={i} className="bg-yellow-200 text-slate-900 rounded-sm px-0.5">{part}</mark>
+          ) : (
+            part
+          )
+        )}
+      </>
+    );
+  };
+
+  // Highlight Logic for HTML Content (Answer)
+  const processedAnswerHtml = useMemo(() => {
+    if (!searchQuery.trim()) return data.a;
+    
+    const escapedQuery = escapeRegExp(searchQuery);
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    
+    // Split HTML by tags to identify text nodes
+    // Capture tags in the split array using capturing group
+    const parts = data.a.split(/(<[^>]+>)/g);
+    
+    return parts.map(part => {
+      // If it starts with < and ends with >, assume it's a tag and don't touch it
+      if (part.match(/^<[^>]+>$/)) {
+        return part;
+      }
+      // It's a text node, perform replacement
+      return part.replace(regex, '<mark class="bg-yellow-200 text-slate-900 rounded-sm px-0">$1</mark>');
+    }).join('');
+  }, [data.a, searchQuery]);
+
   return (
     <article className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden transition-all hover:shadow-md group mb-6 relative">
       {/* Header / Question */}
@@ -68,7 +114,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             <span className="text-xs text-slate-400 font-mono">#{index + 1}</span>
           </div>
           <h3 className={`text-lg font-bold text-slate-800 leading-snug group-hover:text-${levelColor} transition-colors`}>
-            {data.q}
+            {renderHighlightedText(data.q, searchQuery)}
           </h3>
         </div>
         <div className={`text-slate-300 transition-transform duration-300 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
@@ -186,7 +232,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             {/* Answer Content HTML */}
             <div 
               className="prose prose-slate prose-sm max-w-none [&_code]:bg-slate-100 [&_code]:text-rose-600 [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_h4]:font-bold [&_h4]:text-slate-900"
-              dangerouslySetInnerHTML={{ __html: data.a }} 
+              dangerouslySetInnerHTML={{ __html: processedAnswerHtml }} 
             />
 
             {/* Pro Tip */}
@@ -195,7 +241,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 <span className="absolute -top-3 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
                   Pro Tip
                 </span>
-                <p className="text-emerald-800 text-sm italic">{data.tip}</p>
+                <p className="text-emerald-800 text-sm italic">{renderHighlightedText(data.tip, searchQuery)}</p>
               </div>
             )}
           </div>

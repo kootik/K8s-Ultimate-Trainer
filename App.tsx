@@ -475,6 +475,7 @@ const App: React.FC = () => {
                     onToggleBookmark={() => toggleBookmark(item.id)}
                     onToggleFavorite={() => toggleFavorite(item.id)}
                     levelColor={levelData?.color || 'blue-600'}
+                    searchQuery={searchQuery}
                   />
                 </div>
               ))}

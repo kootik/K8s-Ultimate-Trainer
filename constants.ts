@@ -362,34 +362,122 @@ const SENIOR_MODULES = [
                 <li>Кто успел записать — тот Лидер. Он обновляет timestamp каждые N секунд.</li>
                 <li>Остальные (Standby) следят за Lease. Если timestamp не обновлялся долго — они пытаются захватить лидерство.</li>
             </ol>`
+      },
+      {
+        q: "Как работает API Priority and Fairness (APF)?",
+        a: `<p>Это механизм защиты Control Plane от перегрузки (DDoS от собственных сломанных контроллеров).</p>
+            <p>Запросы классифицируются по <code>FlowSchema</code> (кто пришел? системный юзер, лидер, обычный под?) и направляются в <code>PriorityLevelConfiguration</code>.</p>
+            <p>У каждого уровня приоритета есть очереди. Если очередь переполнена, запросы отклоняются с 429 Too Many Requests. Это предотвращает ситуацию, когда один сломанный оператор "забивает" API сервер и не дает Kubelet'ам обновлять статусы нод.</p>`,
       }
     ]
   },
   {
-    id: 's2', title: '2. Безопасность (Security)', desc: 'PSA, RBAC, mTLS',
+    id: 's2', title: '2. Ядро Linux и Ресурсы', desc: 'Cgroups, OOM',
     questions: [
       {
-        q: "Explain the concept and functionality of Pod Security Admission (PSA) and how it replaces PodSecurityPolicy (PSP).",
+        q: "Как CPU Requests и Limits реализованы в ядре Linux?",
+        a: `<p>Kubernetes транслирует спецификацию пода в настройки <strong>Cgroups</strong>.</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Requests -> cpu.shares:</strong> Это "мягкий" вес. Работает <em>только</em> при конкуренции за процессор. Если нода свободна, под с малым реквестом может занять хоть 100% CPU.</li>
+                <li><strong>Limits -> cpu.cfs_quota_us:</strong> Это "жесткий" лимит времени планировщика (CFS). Если процесс исчерпал свою квоту (например, 100мс процессорного времени), ядро <strong>принудительно убирает</strong> его с CPU (Throttling) до следующего периода. Это вызывает задержки (latency), даже если CPU на ноде простаивает.</li>
+            </ul>`,
+        tip: "Для latency-sensitive приложений часто рекомендуют не ставить CPU Limits, чтобы избежать троттлинга."
+      },
+      {
+        q: "Как OOM Killer выбирает жертву? (OOM Score)",
+        a: `<p>Когда память кончается, ядро Linux убивает процессы. Выбор жертвы зависит от <code>oom_score</code>.</p>
+            <p>Kubelet манипулирует этим счетом через <code>oom_score_adj</code> в зависимости от QoS класса пода:</p>
+            <ul>
+                <li><strong>Guaranteed (Req == Lim):</strong> -998. (Почти бессмертны, убиваются последними).</li>
+                <li><strong>BestEffort (No limits):</strong> +1000. (Первые кандидаты на вылет).</li>
+                <li><strong>Burstable:</strong> Значение рассчитывается динамически.</li>
+            </ul>`
+      },
+      {
+        q: "Что такое 'Static' CPU Manager Policy в Kubelet?",
+        a: `<p>По умолчанию Kubelet использует CFS Quota, и потоки приложения прыгают по всем ядрам CPU (Context switching). Это снижает производительность для High Performance задач.</p>
+            <p>Политика <strong>Static</strong> позволяет выделить поду (класса Guaranteed с целым числом CPU) <strong>эксклюзивные физические ядра</strong>. Kubelet меняет cpuset cgroup, изолируя ядра только для этого пода. Никто другой (даже системные процессы) не смогут их использовать.</p>`
+      }
+    ]
+  },
+  {
+    id: 's3', title: '3. Безопасность и CNI Advanced', desc: 'Exec, CNI, Security',
+    questions: [
+      {
+        q: "Как технически работает `kubectl exec`? Опиши поток.",
+        a: `<p>Это не SSH. Это цепочка соединений с Upgrade протокола.</p>
+            <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
+Client (kubectl) -> API Server (HTTP POST /exec -> Upgrade: SPDY/HTTP2)
+API Server (Proxy) -> Kubelet (на ноде)
+Kubelet -> CRI (Container Runtime) (gRPC Exec)
+CRI -> Container Namespace (Stream stdin/stdout)
+            </div>
+            <p>API Server выступает в роли прокси. Данные передаются через стримы WebSocket или SPDY. Поэтому стабильность exec зависит от доступности API сервера.</p>`
+      },
+      {
+        q: "Что такое CNI Chaining?",
+        a: `<p>Спецификация CNI позволяет запускать несколько плагинов последовательно для одного сетевого интерфейса.</p>
+            <p>Пример популярной цепочки:
+            <br>1. <strong>Base CNI (Calico/AWS VPC):</strong> Создает интерфейс, назначает IP, настраивает роутинг.
+            <br>2. <strong>Portmap:</strong> Настраивает iptables правила для реализации <code>hostPort</code>.
+            <br>3. <strong>Istio CNI:</strong> Настраивает iptables внутри неймспейса пода для прозрачного перехвата трафика в Envoy sidecar.</p>`
+      },
+      {
+        q: "Проблема ndots:5 и DNS",
+        a: `<p>По умолчанию в <code>/etc/resolv.conf</code> пода стоит <code>ndots:5</code>. Это заставляет резолвер считать любой домен с < 5 точками "неполным" и перебирать суффиксы (search domains: <code>svc.cluster.local</code>, <code>namespace...</code>).</p>
+            <p><strong>Проблема:</strong> Если вы резолвите <code>google.com</code> (1 точка), K8s сначала попробует:
+            1. <code>google.com.namespace.svc.cluster.local</code> (NXDOMAIN)
+            2. <code>google.com.svc.cluster.local</code> (NXDOMAIN)
+            ...и так далее.</p>
+            <p>Это утраивает нагрузку на DNS сервер. Решение: использовать FQDN (с точкой в конце: <code>google.com.</code>) или менять <code>dnsConfig</code> в поде.</p>`
+      },
+      {
+        q: "Explain the concept and functionality of Pod Security Admission (PSA)",
         a: `<p><strong>Pod Security Admission (PSA)</strong> — это встроенный Admission Controller, который реализует стандарты <strong>Pod Security Standards (PSS)</strong>.</p>
-            <p>Он пришел на замену <strong>PodSecurityPolicy (PSP)</strong>, который был удален в v1.25 из-за сложности и архитектурных проблем.</p>
-            
+            <p>Он пришел на замену <strong>PodSecurityPolicy (PSP)</strong>.</p>
             <h4 class="font-bold mt-2">Как работает PSA:</h4>
-            <p>PSA управляется через <strong>Labels на Namespace</strong>. Никаких CRD. Вы просто вешаете лейбл на неймспейс, и контроллер применяет правила ко всем подам в нем.</p>
-            
+            <p>PSA управляется через <strong>Labels на Namespace</strong>. Никаких CRD.</p>
             <h4 class="font-bold mt-2">Уровни (Profiles):</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Privileged:</strong> Разрешено всё (как <code>docker run --privileged</code>). Для системных компонентов.</li>
-                <li><strong>Baseline:</strong> Минимум ограничений для обычных приложений. Запрещает явные уязвимости (hostNetwork, hostPath), но разрешает большинство конфигов.</li>
-                <li><strong>Restricted:</strong> Максимальная защита (Best Practices). Требует <code>runAsNonRoot</code>, сброс Capabilities и т.д.</li>
-            </ul>
-            
-            <h4 class="font-bold mt-2">Режимы работы (Modes):</h4>
-            <ul class="list-disc pl-5 space-y-1">
-                <li><strong>enforce:</strong> Блокирует создание пода, если он нарушает политику.</li>
-                <li><strong>audit:</strong> Записывает нарушение в Audit Log.</li>
-                <li><strong>warn:</strong> Выводит предупреждение пользователю при <code>kubectl apply</code>.</li>
+                <li><strong>Privileged:</strong> Разрешено всё.</li>
+                <li><strong>Baseline:</strong> Минимум ограничений.</li>
+                <li><strong>Restricted:</strong> Максимальная защита (Best Practices).</li>
             </ul>`,
-        tip: "PSA — это 'Batteries included' решение. Для более сложной логики (например, разрешить image только из определенного registry) нужно использовать OPA Gatekeeper или Kyverno."
+        tip: "PSA — это 'Batteries included' решение. Для сложной логики нужен OPA/Kyverno."
+      },
+      {
+        q: "OIDC Authentication flow",
+        a: `<p>API Server <strong>не хранит</strong> пользователей. Он доверяет токенам (JWT ID Token), подписанным внешним провайдером.</p>
+            <ol class="list-decimal pl-5 mt-2 space-y-1">
+                <li>Пользователь логинится в Keycloak/Google, получает <code>id_token</code>.</li>
+                <li><code>kubectl</code> отправляет этот токен в заголовке <code>Authorization: Bearer ...</code>.</li>
+                <li>API Server проверяет цифровую подпись токена.</li>
+                <li>Если подпись верна, он извлекает <code>email</code>/<code>groups</code> и использует их для RBAC.</li>
+            </ol>`
+      },
+      {
+        q: "CSR API и Kubelet Bootstrapping",
+        a: `<p>Когда новая нода добавляется в кластер, у неё нет сертификатов. Она не может просто сгенерировать их сама.</p>
+            <p>Kubelet использует начальный токен (bootstrap token), чтобы отправить запрос <strong>CSR</strong> в API Server.</p>
+            <p>Контроллер <code>csrapproving</code> проверяет токен и автоматически одобряет (Approve) запрос, выдавая Kubelet'у полноценный клиентский сертификат.</p>`
+      },
+      {
+        q: "Компоненты CSI драйвера",
+        a: `<p>CSI драйвер обычно состоит из пода на каждой ноде (Node Driver) и центрального контроллера (Controller Driver).</p>
+            <p>K8s предоставляет готовые <strong>Sidecar контейнеры</strong>:</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>external-provisioner:</strong> Следит за PVC, вызывает <code>CreateVolume</code>.</li>
+                <li><strong>external-attacher:</strong> Следит за VolumeAttachment, вызывает <code>ControllerPublishVolume</code>.</li>
+                <li><strong>node-driver-registrar:</strong> Регистрирует драйвер в Kubelet.</li>
+            </ul>`
+      },
+      {
+        q: "Volume Expansion Flow",
+        a: `<p>Процесс двухэтапный:</p>
+            <ol class="list-decimal pl-5 mt-2 space-y-1">
+                <li><strong>Control Plane Expansion:</strong> <code>external-resizer</code> вызывает API облака, чтобы увеличить размер диска.</li>
+                <li><strong>File System Expansion:</strong> Kubelet на ноде обнаруживает изменение и вызывает <code>NodeExpandVolume</code> (resize2fs/xfs_growfs).</li>
+            </ol>`
       }
     ]
   }

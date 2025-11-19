@@ -92,6 +92,27 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
           >
             😈 Вопрос с подвохом
           </button>
+          <button
+            onClick={() => handleAction('analyst_compare')}
+            disabled={loading}
+            className="px-3 py-1.5 bg-amber-100 text-amber-800 text-xs font-bold rounded hover:bg-amber-200 transition disabled:opacity-50"
+          >
+            📊 Сравнение (Analyst)
+          </button>
+          <button
+            onClick={() => handleAction('troubleshooter_debug')}
+            disabled={loading}
+            className="px-3 py-1.5 bg-cyan-100 text-cyan-800 text-xs font-bold rounded hover:bg-cyan-200 transition disabled:opacity-50"
+          >
+            🛠️ Debug (SRE)
+          </button>
+          <button
+            onClick={() => handleAction('security_auditor')}
+            disabled={loading}
+            className="px-3 py-1.5 bg-slate-800 text-yellow-400 border border-yellow-600/50 text-xs font-bold rounded hover:bg-slate-700 transition disabled:opacity-50 flex items-center gap-1"
+          >
+            🛡️ Security Audit
+          </button>
         </div>
       </div>
 
@@ -113,6 +134,9 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
               {activePersona === 'teacher_eli5' && 'Простое объяснение'}
               {activePersona === 'architect_deep' && 'Архитектурный разбор'}
               {activePersona === 'devil_advocate' && 'Follow-up Challenge'}
+              {activePersona === 'analyst_compare' && 'Сравнительный анализ'}
+              {activePersona === 'troubleshooter_debug' && 'План отладки (SRE)'}
+              {activePersona === 'security_auditor' && 'Аудит безопасности (CKS)'} 
             </div>
             <div className="flex items-center gap-1">
               {activePersona && (
