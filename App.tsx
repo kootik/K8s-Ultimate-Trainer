@@ -109,7 +109,7 @@ const App: React.FC = () => {
     setCurrentLevel(level);
     setCurrentModuleId(null); // Reset module
     setSearchQuery('');
-    setIsMobileMenuOpen(false);
+    // Don't close mobile menu here to allow user to pick a module immediately
   };
 
   const handleGoHome = () => {
