@@ -319,19 +319,34 @@ const App: React.FC = () => {
                 className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:z-10 group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100 border-x border-b border-slate-100 dark:border-slate-700/50 relative`}
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
-                {/* Enhanced Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 opacity-0 scale-95 origin-bottom transition-all duration-300 ease-out group-hover:opacity-100 group-hover:scale-100 group-hover:mb-4 pointer-events-none z-30 hidden md:block">
-                    <div className="relative bg-slate-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-slate-700/50 text-center">
+                {/* Enhanced Tooltip with Module List */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-80 opacity-0 scale-95 origin-bottom transition-all duration-300 ease-out group-hover:opacity-100 group-hover:scale-100 group-hover:mb-4 pointer-events-none z-30 hidden md:block">
+                    <div className="relative bg-slate-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-slate-700/50 text-left">
                        {/* Decorative top gradient */}
                        <div className={`absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent`}></div>
                        
-                       <div className={`font-bold text-sm mb-1.5 text-${level.color.split('-')[0]}-300 flex items-center justify-center gap-2`}>
-                           <span className="text-base">{level.icon}</span>
+                       {/* Header */}
+                       <div className={`font-bold text-sm mb-3 text-${level.color.split('-')[0]}-300 flex items-center gap-2 pb-2 border-b border-white/10`}>
+                           <span className="text-lg">{level.icon}</span>
                            <span>{level.subTitle}</span>
                        </div>
                        
-                       <div className="text-slate-300 text-xs leading-relaxed font-medium">
-                           {level.description}
+                       {/* Content: Module List */}
+                       <div className="space-y-2">
+                           <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">В программе:</p>
+                           <ul className="space-y-1.5">
+                               {level.modules.slice(0, 4).map((mod, i) => (
+                                   <li key={i} className="text-xs text-slate-300 flex items-start gap-2">
+                                       <span className={`mt-1 w-1.5 h-1.5 rounded-full bg-${level.color} flex-shrink-0 opacity-80`}></span>
+                                       <span className="leading-snug opacity-90">{mod.title}</span>
+                                   </li>
+                               ))}
+                               {level.modules.length > 4 && (
+                                   <li className="text-[10px] text-slate-500 pl-3.5 italic">
+                                       + еще {level.modules.length - 4} тем...
+                                   </li>
+                               )}
+                           </ul>
                        </div>
 
                        {/* Arrow */}
