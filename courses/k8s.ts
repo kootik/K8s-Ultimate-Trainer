@@ -324,7 +324,7 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
         tip: "Никогда не используйте `hostNetwork: true` для обычных бизнес-приложений. Это считается грубой ошибкой безопасности и архитектуры."
       },
       {
-        q: "What are Kubernetes Network Policies and how do they differ from firewall rules?",
+        q: "Что такое Network Policies и чем они отличаются от правил фаервола?",
         a: `<p><strong>Network Policies (NetPol)</strong> — это нативный механизм K8s для сегментации трафика между подами.</p>
             <ul class="list-disc pl-5 mt-2 space-y-1">
                 <li><strong>Не IP, а Метки:</strong> Традиционные Firewall работают с IP-адресами/подсетями. NetPol использует <strong>Labels (Selectors)</strong>. Поскольку IP подов постоянно меняются, правила на основе меток (например, <code>app: db</code> разрешено только для <code>app: backend</code>) гораздо надежнее.</li>
@@ -682,7 +682,7 @@ Kubectl -> API Server -> Kubelet -> CRI -> Container Namespace
         tip: "Решение: используйте FQDN (с точкой в конце: <code>google.com.</code>) в коде приложения или настройте <code>dnsConfig</code> в спецификации Пода."
       },
       {
-        q: "Pod Security Admission (PSA) vs PSP: Как это работает?",
+        q: "Объясните концепцию и функциональность Pod Security Admission (PSA) и как она заменяет PodSecurityPolicy (PSP).",
         a: `<p>PSA — это встроенный контроллер, заменивший сложный PodSecurityPolicy. Он управляется исключительно через <strong>Labels на Namespace</strong>.</p>
               <h4 class="font-bold mt-2">Три стандарта (Profiles):</h4>
               <ul class="list-disc pl-5 mt-2 space-y-1">
