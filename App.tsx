@@ -319,13 +319,23 @@ const App: React.FC = () => {
                 className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:z-10 group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100 border-x border-b border-slate-100 dark:border-slate-700/50 relative`}
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
-                {/* Tooltip */}
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 -translate-y-full w-64 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 mb-2 hidden md:block">
-                    <div className="bg-slate-900 text-white text-xs p-3 rounded-lg shadow-xl text-center border border-slate-700 relative mx-auto">
-                       <div className={`font-bold mb-1 text-${level.color.split('-')[0]}-300`}>{level.subTitle}</div>
-                       <div className="text-slate-300 leading-snug">{level.description}</div>
+                {/* Enhanced Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 opacity-0 scale-95 origin-bottom transition-all duration-300 ease-out group-hover:opacity-100 group-hover:scale-100 group-hover:mb-4 pointer-events-none z-30 hidden md:block">
+                    <div className="relative bg-slate-900/95 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-slate-700/50 text-center">
+                       {/* Decorative top gradient */}
+                       <div className={`absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent`}></div>
+                       
+                       <div className={`font-bold text-sm mb-1.5 text-${level.color.split('-')[0]}-300 flex items-center justify-center gap-2`}>
+                           <span className="text-base">{level.icon}</span>
+                           <span>{level.subTitle}</span>
+                       </div>
+                       
+                       <div className="text-slate-300 text-xs leading-relaxed font-medium">
+                           {level.description}
+                       </div>
+
                        {/* Arrow */}
-                       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-3 h-3 bg-slate-900 border-r border-b border-slate-700"></div>
+                       <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900/95 border-b border-r border-slate-700/50 rotate-45"></div>
                     </div>
                 </div>
 
