@@ -2,6 +2,7 @@
 import { CourseConfig } from '../types';
 import { course as k8sCourse } from '../courses/k8s';
 import { course as pythonCourse } from '../courses/python';
+import { course as dockerCourse } from '../courses/docker';
 
 // Note: We use manual imports here because `import.meta.glob` caused runtime errors 
 // in the current environment (likely due to the build transform not applying).
@@ -9,7 +10,8 @@ import { course as pythonCourse } from '../courses/python';
 
 const courses: CourseConfig[] = [
   k8sCourse,
-  pythonCourse
+  pythonCourse,
+  dockerCourse
 ];
 
 export const getAllCourses = (): CourseConfig[] => {
