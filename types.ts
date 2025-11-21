@@ -27,6 +27,13 @@ export interface LevelConfig {
   modules: Module[];
 }
 
+export interface CourseConfig {
+  id: string;
+  title: string;
+  description: string;
+  levels: Record<string, LevelConfig>;
+}
+
 export type AIPersona = 
   | 'interviewer_strict' 
   | 'interviewer_friendly' 

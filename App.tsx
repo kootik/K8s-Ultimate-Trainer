@@ -1,9 +1,16 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { LevelType, LevelConfig } from './types';
-import { LEVELS } from './constants';
+import { LevelType, LevelConfig, CourseConfig } from './types';
+import { getAllCourses } from './services/courseLoader';
 import QuestionCard from './components/QuestionCard';
 
 const App: React.FC = () => {
+  // Загружаем все доступные курсы
+  const availableCourses = useMemo(() => getAllCourses(), []);
+  
+  // Состояние текущего курса (по умолчанию первый из списка или k8s)
+  const [activeCourse, setActiveCourse] = useState<CourseConfig>(availableCourses[0]);
+
   const [currentLevel, setCurrentLevel] = useState<LevelType | null>(null);
   const [currentModuleId, setCurrentModuleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +69,10 @@ const App: React.FC = () => {
   const toggleTheme = () => setDarkMode(!darkMode);
 
   // Derived state for active data
-  const levelData = currentLevel ? LEVELS[currentLevel] : null;
+  // Вместо импорта LEVELS из constants.ts, берем их из activeCourse
+  const levelData = currentLevel && activeCourse.levels[currentLevel] 
+    ? activeCourse.levels[currentLevel] 
+    : null;
   
   // Search Logic Helpers
   const isSearchActive = searchQuery.trim().length > 0;
@@ -109,7 +119,7 @@ const App: React.FC = () => {
     setCurrentLevel(level);
     setCurrentModuleId(null); // Reset module
     setSearchQuery('');
-    // Don't close mobile menu here to allow user to pick a module immediately
+    // Prevent sidebar from closing on mobile when switching levels so user can select a module immediately
   };
 
   const handleGoHome = () => {
@@ -250,15 +260,43 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-8 md:px-6 md:py-16 pb-32">
           <div className="text-center mb-8 md:mb-16 animate-fade-in">
             <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4 md:mb-6">
-              Kubernetes <span className="text-blue-600 dark:text-blue-400">Ultimate Hub</span>
+              {activeCourse.title} <span className="text-blue-600 dark:text-blue-400">Hub</span>
             </h1>
             <p className="text-base md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed">
-              AI-тренажер для подготовки к техническим интервью. Освойте K8s от базовых примитивов до ядра Linux.
+              {activeCourse.description}
             </p>
           </div>
 
+          {/* Course Selection in Landing Page */}
+           {availableCourses.length > 1 && (
+              <div className="flex justify-center mb-10 animate-fade-in">
+                  <div className="relative w-full max-w-md">
+                       <label className="block text-center text-sm font-bold text-slate-500 uppercase mb-2">Выбрать курс</label>
+                       <select 
+                           className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none text-center font-bold"
+                           value={activeCourse.id}
+                           onChange={(e) => {
+                               const selected = availableCourses.find(c => c.id === e.target.value);
+                               if (selected) {
+                                   setActiveCourse(selected);
+                               }
+                           }}
+                       >
+                           {availableCourses.map(course => (
+                               <option key={course.id} value={course.id}>
+                                   {course.title}
+                               </option>
+                           ))}
+                       </select>
+                       <div className="absolute right-4 top-[38px] pointer-events-none text-slate-500">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                       </div>
+                  </div>
+              </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
-            {(Object.values(LEVELS) as LevelConfig[]).map((level, idx) => (
+            {activeCourse.levels && (Object.values(activeCourse.levels) as LevelConfig[]).map((level, idx) => (
               <div 
                 key={level.id}
                 onClick={() => handleLevelSelect(level.id)}
@@ -305,7 +343,7 @@ const App: React.FC = () => {
         <div className="p-6 border-b border-slate-800 dark:border-slate-900 bg-slate-900 dark:bg-slate-950">
           {/* Sidebar Header with Level Switcher */}
           <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold text-white tracking-tight cursor-pointer" onClick={handleGoHome}>K8s Trainer</h1>
+              <h1 className="text-xl font-bold text-white tracking-tight cursor-pointer" onClick={handleGoHome}>Trainer</h1>
               <div className="flex items-center gap-3 md:hidden">
                 <button 
                   onClick={toggleTheme}
@@ -319,10 +357,40 @@ const App: React.FC = () => {
                 </button>
               </div>
           </div>
+
+          {/* --- COURSE SELECTOR --- */}
+          <div className="mb-6">
+                <label className="text-[10px] text-slate-500 font-bold uppercase mb-1.5 block tracking-wider">
+                    Дисциплина
+                </label>
+                <div className="relative">
+                    <select 
+                        className="w-full bg-slate-800 text-white text-xs font-medium rounded-lg p-2.5 pr-8 border border-slate-700 outline-none focus:border-blue-500 appearance-none cursor-pointer hover:bg-slate-700/50 transition-colors"
+                        value={activeCourse.id}
+                        onChange={(e) => {
+                            const selected = availableCourses.find(c => c.id === e.target.value);
+                            if (selected) {
+                                setActiveCourse(selected);
+                                setCurrentLevel(null); // Сброс уровня при смене курса
+                                setSearchQuery('');
+                            }
+                        }}
+                    >
+                        {availableCourses.map(course => (
+                            <option key={course.id} value={course.id}>
+                                {course.title}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="absolute right-3 top-3 pointer-events-none text-slate-400">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
+          </div>
           
           {/* Inline Level Switcher */}
           <div className="grid grid-cols-3 gap-2">
-            {(Object.values(LEVELS) as LevelConfig[]).map((level) => {
+            {activeCourse.levels && (Object.values(activeCourse.levels) as LevelConfig[]).map((level) => {
                 const isActive = currentLevel === level.id;
                 return (
                   <button
