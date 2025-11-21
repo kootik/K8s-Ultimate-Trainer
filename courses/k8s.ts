@@ -264,7 +264,7 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
       },
       {
         q: "Почему Cilium и eBPF считаются революцией в мире CNI?",
-        a: `<p>Традиционные CNI (Flannel, Calico в стандартном режиме) часто используют <strong>iptables</strong> для маршрутизации и NAT. При масштабах в тысячи сервисов iptables становится узким местом из-за последовательного перебора правил.</p>
+        a: `<p>Традиционные CNI (Flannel, Calico в стандартном режиме) часто используют <strong>iptables</strong> для маршрутизации и NAT. При масштабах в тысячи сервисов iptables становится узким местом изза последовательного перебора правил.</p>
             <p><strong>Cilium</strong> использует технологию <strong>eBPF</strong> (Extended Berkeley Packet Filter):</p>
             <ul class="list-disc pl-5 space-y-2 mt-2">
                 <li><strong>Kernel Level Performance:</strong> Программы eBPF запускаются в песочнице внутри ядра Linux. Пакетам не нужно проходить через тяжеловесный сетевой стек TCP/IP для простой переадресации, что дает производительность близкую к "голому железу".</li>
@@ -281,6 +281,34 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
                 <li><strong>IPVS (Performance):</strong> Использует хэш-таблицы в ядре Linux O(1). Поиск маршрута почти мгновенный, независимо от числа сервисов. Поддерживает сложные алгоритмы балансировки (Least Connection и др.).</li>
             </ul>`,
         tip: "В крупных кластерах IPVS обязателен. Но современные CNI (как Cilium) могут полностью заменять kube-proxy, используя eBPF."
+      },
+      {
+        q: "Приведи практический пример NetworkPolicy. Как разрешить трафик только от конкретного микросервиса?",
+        a: `<p>NetworkPolicy работает по принципу "White-list". Как только вы применяете политику к поду, весь остальной трафик блокируется.</p>
+            <p><strong>Сценарий:</strong> База данных (<code>role: db</code>) должна принимать подключения <em>только</em> от бэкенда (<code>app: backend</code>) по порту 5432. Весь остальной входящий трафик (Ingress) запрещен.</p>
+            <div class="bg-slate-800 text-white p-4 rounded text-sm font-mono my-2 whitespace-pre-wrap">
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-db
+  namespace: prod
+spec:
+  podSelector:
+    matchLabels:
+      role: db
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    ports:
+    - protocol: TCP
+      port: 5432
+            </div>
+            <p><strong>Важно:</strong> Если вы хотите заблокировать вообще всё (Default Deny), создайте политику с пустым полем <code>ingress: []</code>.</p>`,
+        tip: "Не забывайте, что NetworkPolicy также может фильтровать по `namespaceSelector`. Это полезно для Multi-tenancy, чтобы запретить Cross-Namespace трафик."
       },
       {
         q: "В чем разница между Overlay (VXLAN) и Flat (BGP) сетью?",
@@ -324,7 +352,7 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
         tip: "Никогда не используйте `hostNetwork: true` для обычных бизнес-приложений. Это считается грубой ошибкой безопасности и архитектуры."
       },
       {
-        q: "Что такое Network Policies и чем они отличаются от правил фаервола?",
+        q: "Что такое Kubernetes Network Policies и чем они отличаются от правил фаервола?",
         a: `<p><strong>Network Policies (NetPol)</strong> — это нативный механизм K8s для сегментации трафика между подами.</p>
             <ul class="list-disc pl-5 mt-2 space-y-1">
                 <li><strong>Не IP, а Метки:</strong> Традиционные Firewall работают с IP-адресами/подсетями. NetPol использует <strong>Labels (Selectors)</strong>. Поскольку IP подов постоянно меняются, правила на основе меток (например, <code>app: db</code> разрешено только для <code>app: backend</code>) гораздо надежнее.</li>
@@ -370,6 +398,20 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
   {
     id: 'm4', title: '4. Жизненный цикл (Lifecycle)', desc: 'Probes, Hooks',
     questions: [
+      {
+        q: "Опиши полный жизненный цикл Пода: от Pending до Succeeded/Failed.",
+        a: `<p>Понимание статусов помогает в траблшутинге. Контроллеры (Deployment/ReplicaSet) создают объект Pod, но не запускают его напрямую.</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Pending:</strong> Заявка принята API-сервером, но под еще не запущен.
+                    <br><em>Причины задержки:</em> Scheduler ищет ноду, нет свободных ресурсов (CPU/RAM), скачивание образа (Image Pulling).</li>
+                <li><strong>ContainerCreating:</strong> Под назначен на ноду. Kubelet монтирует Volumes и запускает контейнеры.</li>
+                <li><strong>Running:</strong> Минимум один контейнер успешно стартовал.</li>
+                <li><strong>Terminating:</strong> Подан сигнал удаления. Выполняется <code>preStop</code> hook, затем SIGTERM, ожидание <code>terminationGracePeriodSeconds</code> (по умолчанию 30с), и наконец SIGKILL.</li>
+                <li><strong>Succeeded / Failed:</strong> Финальные фазы для Jobs или подов, которые остановились сами (Exit Code 0 или >0).</li>
+            </ul>
+            <p class="mt-2 text-sm bg-gray-100 p-2 rounded"><strong>Важно:</strong> Pods эфемерны. Если под умер (Failed), Deployment не "лечит" его, а создает <strong>новый</strong> объект Pod с новым ID и IP.</p>`,
+        tip: "Статус `Unknown` обычно означает, что Kubelet на ноде перестал отвечать API-серверу (например, нода упала)."
+      },
       {
         q: "Liveness vs Readiness Probe: когда какая нужна?",
         a: `<p>Разные действия при провале проверки (Failure):</p>
@@ -487,14 +529,25 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
         tip: "HPA борется с 'Horizontal' нагрузкой (рост числа запросов), но не решает проблему 'Vertical' оптимизации (слишком мало RAM/CPU для одной реплики)."
       },
       {
-        q: "В чем ключевое отличие HPA от VPA (Vertical Pod Autoscaler)?",
-        a: `<p>Оба — автоскейлеры, но они оптимизируют разные параметры:</p>
+        q: "В чем ключевое отличие HPA от VPA и как решать их конфликты?",
+        a: `<p>Оба — автоскейлеры, но оптимизируют разные параметры:</p>
             <ul class="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>HPA (Horizontal):</strong> Меняет <strong>количество реплик</strong> (масштабирование OUT/IN). Используется для stateless-приложений, где добавление реплик решает проблему.</li>
-                <li><strong>VPA (Vertical):</strong> Меняет <strong>Requests/Limits</strong> CPU и Memory для пода (масштабирование UP/DOWN). Используется для оптимизации использования ресурсов или для приложений, которые плохо масштабируются горизонтально.</li>
+                <li><strong>HPA (Horizontal):</strong> Меняет <strong>количество реплик</strong> (масштабирование OUT/IN). Используется для stateless-приложений.</li>
+                <li><strong>VPA (Vertical):</strong> Меняет <strong>Requests/Limits</strong> пода (масштабирование UP/DOWN). Используется для оптимизации использования ресурсов.</li>
             </ul>
-            <p class="mt-2"><strong>Конфликт:</strong> HPA и VPA не могут работать с одним и тем же ресурсом (например, CPU) одновременно, так как VPA может захотеть перезапустить под для применения новых Requests/Limits, а HPA не знает о новом оптимальном размере пода.</p>`,
-        tip: "VPA не может менять ресурсы у запущенного пода. Он должен перезапустить под. Упомяните, что VPA может работать только в режиме 'Recommendation', чтобы не прерывать работу пода, пока HPA масштабирует."
+            <h4 class="font-bold mt-2">Проблема конфликта (Race Condition):</h4>
+            <p>Если оба скейлера смотрят на одну метрику (например, CPU), они начинают "воевать":</p>
+            <ol class="list-decimal pl-5 space-y-1">
+                <li>Нагрузка растет -> HPA добавляет реплики.</li>
+                <li>Нагрузка на один под падает (распределилась) -> VPA видит, что CPU простаивает, и <em>снижает</em> Request.</li>
+                <li>HPA видит, что утилизация относительно нового (маленького) Request снова высока -> добавляет еще реплик. <strong>Бесконечный цикл раздувания.</strong></li>
+            </ol>
+            <p><strong>Стратегии решения:</strong></p>
+            <ul>
+                <li>Использовать VPA в режиме <code>updateMode: "Off"</code> или <code>"Initial"</code> (только рекомендации), а HPA для активного скейлинга.</li>
+                <li>Использовать HPA на основе Custom Metrics (QPS), а VPA на основе CPU/RAM.</li>
+            </ul>`,
+        tip: "Идеальная связка: HPA следит за бизнес-метриками (запросы в секунду), а VPA в режиме рекомендаций помогает вам выставить правильные Requests в CI/CD."
       },
       {
         q: "Объясни концепцию Taints и Tolerations. Зачем они нужны?",
@@ -504,11 +557,14 @@ Kubelet -> (CRI gRPC) -> containerd -> runc -> Container
                 <li><strong>Toleration (Толерантность):</strong> Применяется к <strong>Pod</strong>. Разрешает поду быть размещенным на ноде с соответствующим Taint.</li>
             </ul>
             <p class="mt-2"><strong>Пример:</strong> Нода с Taint <code>gpu=true:NoSchedule</code> будет принимать поды только с Toleration на <code>gpu=true</code>.</p>
-            <h4 class="font-bold mt-2">Эффекты (Effect):</h4>
-            <ul>
-                <li><code>NoSchedule</code>: Новые поды не могут быть размещены.</li>
-                <li><code>PreferNoSchedule</code>: Шедулер постарается избежать, но может разместить.</li>
-                <li><code>NoExecute</code>: <strong>Удаляет</strong> уже запущенные поды и предотвращает запуск новых. (Используется для изоляции при проблемах с нодой).</li>
+            <h4 class="font-bold mt-2">Эффекты (Effects) и Use Cases:</h4>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>NoSchedule:</strong> Строгий запрет для <em>новых</em> подов. Старые продолжают работать.
+                    <br><em>Use Case:</em> Выделение нод под GPU (<code>gpu=true:NoSchedule</code>) или под конкретную команду.</li>
+                <li><strong>PreferNoSchedule:</strong> "Мягкий" запрет. Шедулер попытается найти другую ноду, но если мест нет — разместит здесь.
+                    <br><em>Use Case:</em> Разделение зон доступности, где одна зона "дороже" другой, но использовать её можно в пике нагрузки.</li>
+                <li><strong>NoExecute:</strong> Самый агрессивный. Запрещает новые И <strong>выселяет (Evict)</strong> уже запущенные поды (если у них нет toleration).
+                    <br><em>Use Case:</em> Вывод ноды в обслуживание (<code>kubectl drain</code> использует это), или автоматическая реакция на проблемы с сетью/диском (<code>node.kubernetes.io/unreachable</code>).</li>
             </ul>`,
         tip: "Taint & Toleration — это <strong>исключающий</strong> механизм. Affinity/Selector — это <strong>включающий</strong> механизм."
       },
@@ -689,7 +745,14 @@ Kubectl -> API Server -> Kubelet -> CRI -> Container Namespace
                   <li><strong>Privileged:</strong> Полный доступ (для системных агентов, CSI).</li>
                   <li><strong>Baseline:</strong> Запрещает привилегированные контейнеры и хостовые порты/сети.</li>
                   <li><strong>Restricted:</strong> Самый строгий. Требует сброса всех Linux Capabilities, явной настройки Seccomp и запуска не от root (RunAsNonRoot).</li>
-              </ul>`,
+              </ul>
+              <p class="mt-2"><strong>Профиль RuntimeDefault (Hardening):</strong></p>
+              <p>Это золотая середина безопасности. Он активирует:</p>
+              <ul class="list-disc pl-5 space-y-1">
+                  <li><strong>Seccomp профиль:</strong> Блокирует опасные системные вызовы ядра.</li>
+                  <li><strong>Capabilities:</strong> Сбрасывает большинство привилегий, оставляя только необходимые для стандартных приложений.</li>
+              </ul>
+              <p>Это предотвращает множество Zero-Day уязвимостей ядра без необходимости настраивать каждый под вручную.</p>`,
         tip: "PSA — это простое 'коробочное' решение. Если вам нужна сложная логика (например, разрешить образы только из корпоративного реестра), вам все равно понадобится OPA Gatekeeper или Kyverno."
       },
       {
@@ -697,6 +760,18 @@ Kubectl -> API Server -> Kubelet -> CRI -> Container Namespace
         a: `<p>API Server проверяет ID Token (JWT) как <strong>Stateless</strong> сервис. Он проверяет цифровую подпись и срок действия (exp), но <strong>не обращается</strong> к провайдеру (Google/Okta) при каждом запросе.</p>
               <p><strong>Проблема отзыва:</strong> Если сотрудника уволили и заблокировали в Okta, его токен продолжает работать в K8s до истечения времени жизни (обычно 1 час). Моментальный отзыв на уровне API-сервера невозможен.</p>`,
         tip: "Для минимизации рисков используйте короткоживущие токены (Short TTL) в сочетании с механизмом Refresh Tokens на стороне клиента (kubelogin)."
+      },
+      {
+        q: "Pod Affinity и Anti-Affinity. В чем отличие от NodeSelector и когда использовать?",
+        a: `<p><strong>NodeSelector</strong> выбирает ноду на основе её меток (статично).<br><strong>Affinity</strong> позволяет строить правила на основе меток <strong>других подов</strong>, которые уже запущены.</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Pod Affinity:</strong> Притягивает поды друг к другу.
+                    <br><em>Пример:</em> Бэкенд должен быть на той же ноде (или в той же зоне), что и кэш Redis для минимизации задержек.</li>
+                <li><strong>Pod Anti-Affinity:</strong> Отталкивает поды друг от друга.
+                    <br><em>Пример:</em> Не запускать более одной реплики приложения на одной физической ноде для отказоустойчивости (HA).</li>
+            </ul>
+            <p class="mt-2"><strong>topologyKey: kubernetes.io/hostname</strong><br>Это ключевой параметр. Он говорит планировщику: "Считай 'одним местом' (topology domain) одну физическую ноду". Если изменить на <code>topology.kubernetes.io/zone</code>, то правило будет действовать на уровне целой зоны доступности (AZ).</p>`,
+        tip: "Всегда добавляйте Pod Anti-Affinity в критические Deployment'ы. NodeSelector не гарантирует, что при падении одной ноды вы не потеряете все реплики сразу."
       }
     ]
   },
@@ -850,6 +925,21 @@ spec:
                   <li>Это делает Kyverno идеальным инструментом для автоматизации настройки окружений (Soft Multi-tenancy) без написания сложных операторов.</li>
               </ul>`,
         tip: "Выбирайте Kyverno, если вам нужно быстро автоматизировать рутину и вы не хотите учить Rego. Выбирайте OPA, если у вас уже есть экосистема политик на Rego вне Kubernetes."
+      },
+      {
+        q: "Pod Affinity/Anti-Affinity vs NodeSelector в контексте изоляции. Зачем нужен topologyKey?",
+        a: `<p><strong>NodeSelector</strong> — простой механизм: "Запусти под на ноде с меткой disk=ssd". Он бинарен (да/нет).</p>
+            <p><strong>Affinity</strong> — выразительный язык, критичный для Multi-tenancy:</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Pod Affinity:</strong> "Запусти этот под там, где <em>уже работает</em> под Redis". (Притягивание к зависимости для скорости).</li>
+                <li><strong>Pod Anti-Affinity:</strong> "Не запускай этот под там, где <em>уже есть</em> такой же под". (Распределение для отказоустойчивости).</li>
+            </ul>
+            <p><strong>topologyKey:</strong> Определяет "зону" уникальности.</p>
+            <ul>
+                <li><code>topologyKey: kubernetes.io/hostname</code>: Правило действует на уровне одной ноды (разные поды на разных нодах).</li>
+                <li><code>topologyKey: topology.kubernetes.io/zone</code>: Правило действует на уровне зоны (разные поды в разных дата-центрах).</li>
+            </ul>`,
+        tip: "Использование Pod Anti-Affinity с topologyKey: hostname — это стандарт для High Availability деплойментов (чтобы при падении ноды не упали все реплики сразу)."
       }
     ]
   },
@@ -888,6 +978,18 @@ spec:
                   <li><strong>Mutation (TOCTOU Protection):</strong> Важно: контроллер часто заменяет тег образа (<code>:v1</code>) на его <strong>digest</strong> (<code>@sha256:...</code>), чтобы гарантировать, что запускается именно тот байт-код, который был проверен.</li>
               </ol>`,
         tip: "Без мутации в дайджест существует теоретическая атака TOCTOU (Time-of-Check to Time-of-Use), когда образ подменяют в реестре между моментом проверки и моментом скачивания узлом."
+      },
+      {
+        q: "Почему Supply Chain Security так важна и какие лучшие практики применяются в K8s?",
+        a: `<p>Современные атаки (напр. SolarWinds) целятся не в инфраструктуру, а в процесс разработки и доставки кода. Компрометация на этапе сборки дает злоумышленнику доступ к любому кластеру, куда деплоится этот образ.</p>
+            <h4 class="font-bold mt-2">Best Practices (SLSA Framework):</h4>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Image Signing (Подпись):</strong> Использование Cosign/Notary для гарантии авторства.</li>
+                <li><strong>Vulnerability Scanning:</strong> Сканирование образов (Trivy, Clair) как в CI-пайплайне (блокировка билда), так и внутри Registry (периодическая проверка).</li>
+                <li><strong>Admission Controllers:</strong> Запрет на запуск неподписанных образов или образов с уязвимостями Critical уровня (Kyverno, Gatekeeper).</li>
+                <li><strong>SBOM (Software Bill of Materials):</strong> Генерация списка всех библиотек внутри образа для быстрого реагирования на новые CVE (как Log4Shell).</li>
+            </ul>`,
+        tip: "Безопасность Supply Chain начинается «слева» (Shift Left). Не ждите рантайма, чтобы найти уязвимость, блокируйте её еще на этапе Pull Request."
       }
     ]
   },

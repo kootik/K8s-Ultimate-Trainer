@@ -161,6 +161,16 @@ const SENIOR_MODULES = [
             </ol>
             <p>Это эквивалентно выдаче <code>sudo</code> без пароля.</p>`,
         tip: "Для CI/CD (Docker-in-Docker) безопаснее использовать Sysbox или Kaniko, которые не требуют проброса сокета хоста."
+      },
+      {
+        q: "Что такое OCI (Open Container Initiative) и зачем нужны стандарты?",
+        a: `<p><strong>OCI</strong> — это организация, создавшая открытые стандарты для контейнеров, чтобы прекратить войны форматов.</p>
+            <ul class="list-disc pl-5 mt-2 space-y-1">
+                <li><strong>Image Spec:</strong> Стандарт формата образа (слои, JSON манифест, конфиг). Гарантирует, что образ, собранный в Docker, запустится в Podman или Kubernetes.</li>
+                <li><strong>Runtime Spec:</strong> Стандарт запуска контейнера (lifecycle, создание namespaces/cgroups). Референсная реализация — <strong>runc</strong>.</li>
+            </ul>
+            <p>Благодаря OCI, Kubernetes смог отказаться от Docker (Dockershim) и переключиться на containerd/CRI-O, так как все они работают с одними и теми же OCI-совместимыми образами.</p>`,
+        tip: "Знание OCI отличает инженера, понимающего экосистему, от того, кто знает только команды `docker run`."
       }
     ]
   },
@@ -183,7 +193,7 @@ const SENIOR_MODULES = [
                 <li>Утилит (ls, curl, cat).</li>
             </ul>
             <p><strong>Зачем:</strong> Если хакер взломает приложение (RCE), он не сможет запустить шелл или скачать майнер, так как <code>sh</code> и <code>curl</code> просто отсутствуют.</p>`,
-        tip: "Дебажить такие контейнеры сложно. Используйте `kubectl debug` с подключением ephemeral container, в котором есть утилиты."
+        tip: "Дебажить такие контейнеры сложно (нет sh/ls). Используйте `kubectl debug -it <pod> --image=busybox:1.28 --target=<container>`. Это подключит 'Ephemeral Container' с набором утилит к процессу вашего distroless-контейнера."
       }
     ]
   }

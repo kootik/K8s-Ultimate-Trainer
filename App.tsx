@@ -3,13 +3,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { LevelType, LevelConfig, CourseConfig } from './types';
 import { getAllCourses } from './services/courseLoader';
 import QuestionCard from './components/QuestionCard';
+import GlobalChatBot from './components/GlobalChatBot';
 
 const App: React.FC = () => {
   // Загружаем все доступные курсы
   const availableCourses = useMemo(() => getAllCourses(), []);
   
-  // Состояние текущего курса (по умолчанию первый из списка или k8s)
-  const [activeCourse, setActiveCourse] = useState<CourseConfig>(availableCourses[0]);
+  // Состояние текущего курса (по умолчанию первый из списка)
+  // Используем null как начальное состояние, если курсы не загрузились
+  const [activeCourse, setActiveCourse] = useState<CourseConfig | null>(
+    availableCourses.length > 0 ? availableCourses[0] : null
+  );
 
   const [currentLevel, setCurrentLevel] = useState<LevelType | null>(null);
   const [currentModuleId, setCurrentModuleId] = useState<string | null>(null);
@@ -67,6 +71,18 @@ const App: React.FC = () => {
   }, [darkMode]);
 
   const toggleTheme = () => setDarkMode(!darkMode);
+
+  // Safety check if no courses are loaded
+  if (!activeCourse) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500">
+         <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Курсы не найдены</h2>
+            <p className="text-sm">Проверьте конфигурацию файлов курсов.</p>
+         </div>
+      </div>
+    );
+  }
 
   // Derived state for active data
   // Вместо импорта LEVELS из constants.ts, берем их из activeCourse
@@ -300,9 +316,19 @@ const App: React.FC = () => {
               <div 
                 key={level.id}
                 onClick={() => handleLevelSelect(level.id)}
-                className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100 border-x border-b border-slate-100 dark:border-slate-700/50`}
+                className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-t-4 ${level.borderColor} p-6 md:p-8 cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:z-10 group flex flex-col animate-fade-in active:scale-[0.98] md:active:scale-100 border-x border-b border-slate-100 dark:border-slate-700/50 relative`}
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
+                {/* Tooltip */}
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 -translate-y-full w-64 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 mb-2 hidden md:block">
+                    <div className="bg-slate-900 text-white text-xs p-3 rounded-lg shadow-xl text-center border border-slate-700 relative mx-auto">
+                       <div className={`font-bold mb-1 text-${level.color.split('-')[0]}-300`}>{level.subTitle}</div>
+                       <div className="text-slate-300 leading-snug">{level.description}</div>
+                       {/* Arrow */}
+                       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-3 h-3 bg-slate-900 border-r border-b border-slate-700"></div>
+                    </div>
+                </div>
+
                 <div className="flex items-center justify-between md:block mb-4 md:mb-6">
                     <div className="text-4xl md:text-6xl transform group-hover:scale-110 transition-transform duration-300">{level.icon}</div>
                     <h2 className={`text-xl md:text-2xl font-bold text-slate-800 dark:text-white ${level.textHover} transition-colors md:mt-6`}>{level.title}</h2>
@@ -618,6 +644,9 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Global Chat Bot */}
+      {progress > 10 && <GlobalChatBot />}
     </div>
   );
 };

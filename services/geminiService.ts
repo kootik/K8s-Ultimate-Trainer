@@ -1,11 +1,61 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Chat } from "@google/genai";
 import { AIPersona } from '../types';
 
 // Ensure API Key is present
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 const MODEL_NAME = 'gemini-2.5-flash';
+
+// Rate Limiting Constants
+const GLOBAL_CHAT_LIMIT_KEY = 'k8s_trainer_global_chat_limit';
+const GLOBAL_CHAT_HOURLY_LIMIT = 10;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+export const checkGlobalChatRateLimit = (): { allowed: boolean; timeLeft?: number } => {
+  if (typeof window === 'undefined') return { allowed: true };
+  
+  try {
+    const now = Date.now();
+    const rawData = localStorage.getItem(GLOBAL_CHAT_LIMIT_KEY);
+    let timestamps: number[] = rawData ? JSON.parse(rawData) : [];
+
+    // Filter out timestamps older than 1 hour
+    timestamps = timestamps.filter(t => now - t < ONE_HOUR_MS);
+
+    // Update storage to clean up old entries
+    localStorage.setItem(GLOBAL_CHAT_LIMIT_KEY, JSON.stringify(timestamps));
+
+    if (timestamps.length >= GLOBAL_CHAT_HOURLY_LIMIT) {
+      const oldestTimestamp = timestamps[0];
+      const timeUntilExpiry = oldestTimestamp + ONE_HOUR_MS - now;
+      return { allowed: false, timeLeft: timeUntilExpiry > 0 ? timeUntilExpiry : 0 };
+    }
+
+    return { allowed: true };
+  } catch (e) {
+    console.error("Rate limit check failed", e);
+    return { allowed: true };
+  }
+};
+
+export const recordGlobalChatMessage = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const now = Date.now();
+    const rawData = localStorage.getItem(GLOBAL_CHAT_LIMIT_KEY);
+    let timestamps: number[] = rawData ? JSON.parse(rawData) : [];
+    
+    // Clean and add
+    timestamps = timestamps.filter(t => now - t < ONE_HOUR_MS);
+    timestamps.push(now);
+    
+    localStorage.setItem(GLOBAL_CHAT_LIMIT_KEY, JSON.stringify(timestamps));
+  } catch (e) {
+    console.error("Failed to record message timestamp", e);
+  }
+};
 
 // Карты промптов с жесткой структурой инструкций для модели
 const PERSONA_PROMPTS: Record<AIPersona, (q: string) => string> = {
@@ -53,8 +103,8 @@ const PERSONA_PROMPTS: Record<AIPersona, (q: string) => string> = {
        - If the user struggled, pivot to a related easier concept or ask them to clarify.
     3. **Goal:** Simulate a real, back-and-forth engineering discussion where one answer leads to the next question.
     
-    **Format:**
-    **Feedback:** [Your short assessment]
+    **STRICT OUTPUT FORMAT:**
+    **Feedback:** [Your short assessment of the user's answer]
     
     **Next Question:** [Your new follow-up question]
     
@@ -241,4 +291,37 @@ export const generateAIResponse = async (
     console.error("Gemini API Error:", error);
     return "Error communicating with AI Mentor. Please try again.";
   }
+};
+
+export const createChatSession = (): Chat => {
+  return ai.chats.create({
+    model: 'gemini-2.5-flash',
+    config: {
+      systemInstruction: `You are an expert **Technical Mentor** for a DevOps educational platform. 
+      
+      **YOUR GOAL:** Help students master Kubernetes, Docker, Ansible, Python, Linux, and System Design.
+      
+      **STRICT TOPIC RESTRICTION:**
+      You must **ONLY** answer technical study questions related to:
+      1. **DevOps & Cloud** (K8s, Docker, CI/CD, AWS/GCP).
+      2. **Programming** (Python, Go, Bash, Algorithms).
+      3. **System Design**, Security, and Networking.
+      4. **Interview Preparation** (Technical questions only).
+
+      **PROHIBITED TOPICS:**
+      - Do not answer questions about general life, politics, sports, or casual chat.
+      - Do not write poems, stories, or jokes unless they are strictly technical analogies.
+      - Do not provide general career advice unrelated to technical skills.
+      
+      **REFUSAL TEMPLATE:**
+      If a user asks a non-technical question, reply:
+      "Я могу отвечать только на технические вопросы по учебной программе (K8s, Docker, Python). Давайте вернемся к учебе! 🎓"
+      
+      **INSTRUCTIONS:**
+      - Be clear, concise, and encouraging.
+      - Use Emojis and Markdown formatting (Bold, Code Blocks).
+      - If a user asks for a solution, explain *why* it works, don't just give the code.
+      - Response Language: **Russian** (default), or English (if user asks in English).`,
+    }
+  });
 };

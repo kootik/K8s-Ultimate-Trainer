@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { generateAIResponse } from '../services/geminiService';
@@ -113,6 +114,33 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
         }
     }
   }, [feedback, activePersona]);
+
+  // Parse interview content into structured format
+  const interviewContent = useMemo(() => {
+    if (!feedback || !isInterviewMode) return null;
+    
+    if (activePersona === 'start_interview') {
+        return {
+            feedbackPart: null,
+            questionPart: feedback
+        };
+    }
+
+    // Regex to capture Feedback and Next Question from strict format
+    // Matches **Feedback:** (content) **Next Question:** (content)
+    const regex = /\*\*Feedback:?\*\*\s*([\s\S]*?)\s*\*\*Next Question:?\*\*\s*([\s\S]*)/i;
+    const match = feedback.match(regex);
+    
+    if (match && match[1] && match[2]) {
+      return {
+        feedbackPart: match[1].trim(),
+        questionPart: match[2].trim()
+      };
+    }
+    
+    // Fallback: try to find at least the question if feedback part is missing or malformed
+    return null;
+  }, [feedback, isInterviewMode, activePersona]);
 
   const handleAction = async (personaOverride?: AIPersona) => {
     const persona = personaOverride || selectedPersonaId;
@@ -464,6 +492,35 @@ const AIFeedback: React.FC<AIFeedbackProps> = ({ question, answer }) => {
                   />
                   <div className="absolute bottom-2 right-4 text-[10px] text-slate-600 pointer-events-none">
                       YAML / Bash / JSON
+                  </div>
+              </div>
+          ) : isInterviewMode && interviewContent ? (
+              // Structured Interview View (Split Layout)
+              <div className="flex flex-col gap-6 p-5">
+                  {/* Feedback Section - Only if present */}
+                  {interviewContent.feedbackPart && (
+                      <div className="relative pl-4 border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-r-lg">
+                          <h5 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              🎯 Оценка ответа
+                          </h5>
+                          <div className="prose prose-sm max-w-none dark:prose-invert text-slate-700 dark:text-slate-300 leading-relaxed">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {interviewContent.feedbackPart}
+                              </ReactMarkdown>
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Next Question Section */}
+                  <div className="bg-white dark:bg-slate-800 rounded-lg">
+                      <h5 className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          👋 Следующий вопрос
+                      </h5>
+                      <div className="prose prose-sm max-w-none dark:prose-invert text-lg font-medium text-slate-800 dark:text-slate-100 leading-relaxed">
+                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {interviewContent.questionPart}
+                              </ReactMarkdown>
+                      </div>
                   </div>
               </div>
           ) : (
