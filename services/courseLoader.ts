@@ -5,13 +5,15 @@ import { course as pythonCourse } from '../courses/python';
 import { course as dockerCourse } from '../courses/docker';
 import { course as ansibleCourse } from '../courses/ansible';
 import { course as terraformCourse } from '../courses/terraform';
+import { course as jenkinsCourse } from '../courses/jenkins';
 
 const courses: CourseConfig[] = [
   k8sCourse,
   pythonCourse,
   dockerCourse,
   ansibleCourse,
-  terraformCourse
+  terraformCourse,
+  jenkinsCourse
 ];
 
 export const getAllCourses = (): CourseConfig[] => {
